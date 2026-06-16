@@ -1,0 +1,6 @@
+# DDL / SQL-Skripte (initial-load, views, maintenance).
+# Wird NICHT von Alembic verwaltet — Alembic-Versionen liegen in alembic/versions/.
+# Hier liegen:
+#   - manuelle Wartungs-Queries
+#   - analytische Views
+#   - Performance-Indizes außerhalb der Schema-Migrationen

@@ -1,0 +1,11 @@
+Copyright (c) 2026 finance_data contributors
+
+Nicht-kommerzielle Nutzung. Kein SLA. Keine Garantie für Datenqualität,
+Aktualität oder Verfügbarkeit.
+
+Die Roh-Daten unterliegen den Lizenz- und Nutzungsbedingungen der jeweiligen
+Vendoren (siehe docs/sources.md). Eine Weiterverteilung der Roh-Daten ist
+nicht gestattet; abgeleitete Werke (z.B. normalisierte, eigene Berechnungen)
+sind erlaubt.
+
+Verwendung ausschließlich für private, nicht-kommerzielle Forschung.

@@ -1,0 +1,72 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.ENV
+ENV/
+
+# --- Poetry ---------------------------------------------------------------
+# poetry.lock ist eingecheckt; .venv-Outputs nicht
+.venv*/
+
+# --- Test / Coverage ------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.cache
+
+# --- IDE / Editoren -------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# --- Jupyter / Notebooks --------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb
+# Notebook outputs (rebuilt by scripts/build_notebook.py)
+notebooks/*.html
+
+# --- Bun / OpenTUI-TUI ----------------------------------------------------
+# node_modules + Build-Caches; bun.lock wird eingecheckt (Reproduzierbarkeit)
+tui/node_modules/
+tui/dist/
+tui/coverage/
+# Falls jemand ein anderes Lockfile-Format erzeugt:
+tui/bun.lockb
+
+# --- Secrets & lokale Overrides ------------------------------------------
+.env
+.env.local
+.env.*.local
+
+# --- Daten / Caches (lokal) ----------------------------------------------
+data/
+downloads/
+.parquet/
+*.parquet
+*.csv.gz
+
+# --- Prefect --------------------------------------------------------------
+.prefect/
+
+# --- Docker ---------------------------------------------------------------
+# Volumes werden in docker-compose volumes: {} definiert, kein Bind-Mount.
+
+# --- MyPy / Ruff ----------------------------------------------------------
+.mypy_cache/
+.ruff_cache/

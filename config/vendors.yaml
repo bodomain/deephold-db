@@ -1,0 +1,102 @@
+# Vendor-Konfiguration.
+# Pro Vendor: code, name, enabled, base_url, rate_limit, license, env_vars.
+#
+# Der Adapter-Code liest NUR diese Datei und die zugewiesenen env-vars.
+# Niemals Endpoints oder Keys im Code.
+
+vendors:
+  fred:
+    code: fred
+    name: "Federal Reserve Economic Data"
+    enabled: true
+    base_url: "https://api.stlouisfed.org/fred"
+    rate_limit:
+      requests_per_minute: 120
+      burst: 30
+    license: "Public Domain (US Government)"
+    env_vars: [FRED_API_KEY]
+    notes: "Primär für Zinsen, Makro, FX, ETF-Tracker-Indizes."
+
+  ecb:
+    code: ecb
+    name: "ECB Statistical Data Warehouse (SDMX 2.1)"
+    enabled: true
+    base_url: "https://data-api.ecb.europa.eu/service"
+    rate_limit:
+      requests_per_minute: 60
+      burst: 10
+    license: "© European Central Bank, CC BY 4.0"
+    env_vars: []
+    notes: "Kein API-Key nötig. Primär für EUR-Geldmarkt, EUR-Anleiheyields, ESTR, HICP, EUR-FX."
+
+  bundesbank:
+    code: bundesbank
+    name: "Deutsche Bundesbank — Zeitreihenbank (SDMX)"
+    enabled: true
+    base_url: "https://api.statistiken.bundesbank.de/rest"
+    rate_limit:
+      requests_per_minute: 60
+      burst: 10
+    license: "Public Domain (Disclaimer beachten)"
+    env_vars: [BUNDESBANK_SDMX_BASE]
+    notes: "Sekundär für EUR-Detail. Lizenzhinweis: Daten unterliegen dem Datenangebot der Bundesbank."
+
+  yahoo:
+    code: yahoo
+    name: "Yahoo Finance (via yfinance, privat)"
+    enabled: true
+    base_url: "https://query1.finance.yahoo.com"
+    rate_limit:
+      requests_per_minute: 30
+      burst: 5
+    license: "Yahoo ToS — privater Gebrauch, keine Weiterverteilung"
+    env_vars: [YAHOO_ENABLED]
+    notes: "Nur für Aktien, ETF, Future, Commodity-Spot. ToS-konform verwenden."
+
+  stooq:
+    code: stooq
+    name: "Stooq.com (CSV-Download)"
+    enabled: true
+    base_url: "https://stooq.com/q/d/l/"
+    rate_limit:
+      requests_per_minute: 60
+      burst: 10
+    license: "Free for personal use"
+    env_vars: [STOOQ_ENABLED]
+    notes: "Backup-Quelle, gut für Osteuropa/EM."
+
+  oecd:
+    code: oecd
+    name: "OECD Data API (SDMX)"
+    enabled: false
+    base_url: "https://sdmx.oecd.org/public/rest"
+    rate_limit:
+      requests_per_minute: 60
+      burst: 10
+    license: "© OECD, CC BY 4.0"
+    env_vars: []
+    notes: "Optional; aktivieren wenn FRED/IMF Lücken haben."
+
+  imf:
+    code: imf
+    name: "IMF Data (SDMX)"
+    enabled: false
+    base_url: "https://dataservices.imf.org/REST/SDMX_JSON.svc"
+    rate_limit:
+      requests_per_minute: 30
+      burst: 5
+    license: "© IMF, fair-use"
+    env_vars: []
+    notes: "Optional."
+
+  worldbank:
+    code: worldbank
+    name: "World Bank API"
+    enabled: false
+    base_url: "https://api.worldbank.org/v2"
+    rate_limit:
+      requests_per_minute: 60
+      burst: 10
+    license: "Public Domain"
+    env_vars: []
+    notes: "Optional, primär für GDP/IP der Schwellenländer."

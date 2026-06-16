@@ -1,0 +1,26 @@
+{
+  "name": "finance-data-tui",
+  "version": "0.1.0",
+  "description": "OpenTUI-based data explorer for finance_data",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:unit": "bun test src/",
+    "test:integration": "bun test tests/integration.test.ts"
+  },
+  "dependencies": {
+    "@opentui/core": "latest",
+    "@opentui/react": "latest",
+    "pg": "^8.11.5",
+    "react": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.11.5",
+    "@types/react": "^19.2.0",
+    "typescript": "^5.4.0"
+  }
+}

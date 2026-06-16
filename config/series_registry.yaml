@@ -1,0 +1,189 @@
+# Series-Registry: Inventar aller Serien, die wir abrufen.
+#
+# Pro Eintrag:
+#   series_id:   stabiler, eindeutiger Key (z.B. "FRED:CPIAUCSL")
+#   name:        Anzeigename
+#   source:      Vendor-Code aus vendors.yaml
+#   vendor_key:  nativ beim Vendor (z.B. "CPIAUCSL" für FRED, "D.USD.EUR.SP00.A" für ECB)
+#   license:     Kurzform
+#   url:         Quelle / Doku
+#   first_date:  frühestes bekanntes Datum (YYYY-MM-DD) oder "varies"
+#   last_date:   letztes bekanntes Datum oder "present"
+#   frequency:   D | W | M | Q
+#   unit:        z.B. "%", "USD", "Index", "Thousand"
+#   asset_class: equity | index | bond_gov | bond_credit | money_market |
+#                commodity | fx | vol | macro
+#   notes:       freier Text
+#
+# Diese Registry wird inkrementell befüllt. Weitere Serien siehe AGENTS.md.
+
+series:
+
+  # ----------------------------------------------------------------
+  # FRED — Federal Reserve Economic Data (Public Domain)
+  # ----------------------------------------------------------------
+  - series_id: "FRED:DGS3MO"
+    name: "3-Month Treasury Constant Maturity Rate"
+    source: fred
+    vendor_key: "DGS3MO"
+    license: "Public Domain"
+    url: "https://fred.stlouisfed.org/series/DGS3MO"
+    first_date: "1934-01-01"
+    last_date: "present"
+    frequency: "D"
+    unit: "%"
+    asset_class: "bond_gov"
+    notes: "Daily yield, US 3M Treasury."
+
+  - series_id: "FRED:DGS10"
+    name: "10-Year Treasury Constant Maturity Rate"
+    source: fred
+    vendor_key: "DGS10"
+    license: "Public Domain"
+    url: "https://fred.stlouisfed.org/series/DGS10"
+    first_date: "1962-01-02"
+    last_date: "present"
+    frequency: "D"
+    unit: "%"
+    asset_class: "bond_gov"
+    notes: "Daily yield, US 10Y Treasury."
+
+  - series_id: "FRED:FEDFUNDS"
+    name: "Federal Funds Effective Rate"
+    source: fred
+    vendor_key: "FEDFUNDS"
+    license: "Public Domain"
+    url: "https://fred.stlouisfed.org/series/FEDFUNDS"
+    first_date: "1954-07-01"
+    last_date: "present"
+    frequency: "M"
+    unit: "%"
+    asset_class: "money_market"
+    notes: "Monthly average of daily effective federal funds rate."
+
+  - series_id: "FRED:CPIAUCSL"
+    name: "Consumer Price Index for All Urban Consumers"
+    source: fred
+    vendor_key: "CPIAUCSL"
+    license: "Public Domain"
+    url: "https://fred.stlouisfed.org/series/CPIAUCSL"
+    first_date: "1947-01-01"
+    last_date: "present"
+    frequency: "M"
+    unit: "Index 1982-84=100"
+    asset_class: "macro"
+    notes: "Headline CPI, NSA, monthly."
+
+  - series_id: "FRED:UNRATE"
+    name: "Unemployment Rate"
+    source: fred
+    vendor_key: "UNRATE"
+    license: "Public Domain"
+    url: "https://fred.stlouisfed.org/series/UNRATE"
+    first_date: "1948-01-01"
+    last_date: "present"
+    frequency: "M"
+    unit: "%"
+    asset_class: "macro"
+    notes: "Civilian unemployment rate, 16 years and over."
+
+  # ----------------------------------------------------------------
+  # ECB — Statistical Data Warehouse (CC BY 4.0)
+  # https://data.ecb.europa.eu
+  # SDMX 2.1 REST: https://data-api.ecb.europa.eu/service
+  # ----------------------------------------------------------------
+  - series_id: "ECB:EXR:USD.EUR.SP00.A"
+    name: "USD/EUR reference exchange rate"
+    source: ecb
+    vendor_key: "D.USD.EUR.SP00.A"
+    license: "© ECB, CC BY 4.0"
+    url: "https://data.ecb.europa.eu/data/datasets/EXR/EXR.D.USD.EUR.SP00.A"
+    first_date: "1999-01-04"
+    last_date: "present"
+    frequency: "D"
+    unit: "EUR per USD"
+    asset_class: "fx"
+    notes: "ECB reference rate, 2.15 pm CET."
+
+  - series_id: "ECB:EXR:GBP.EUR.SP00.A"
+    name: "GBP/EUR reference exchange rate"
+    source: ecb
+    vendor_key: "D.GBP.EUR.SP00.A"
+    license: "© ECB, CC BY 4.0"
+    url: "https://data.ecb.europa.eu/data/datasets/EXR/EXR.D.GBP.EUR.SP00.A"
+    first_date: "1999-01-04"
+    last_date: "present"
+    frequency: "D"
+    unit: "EUR per GBP"
+    asset_class: "fx"
+    notes: "ECB reference rate."
+
+  - series_id: "ECB:EXR:JPY.EUR.SP00.A"
+    name: "JPY/EUR reference exchange rate"
+    source: ecb
+    vendor_key: "D.JPY.EUR.SP00.A"
+    license: "© ECB, CC BY 4.0"
+    url: "https://data.ecb.europa.eu/data/datasets/EXR/EXR.D.JPY.EUR.SP00.A"
+    first_date: "1999-01-04"
+    last_date: "present"
+    frequency: "D"
+    unit: "EUR per 100 JPY"
+    asset_class: "fx"
+    notes: "ECB reference rate."
+
+  - series_id: "ECB:ICP:U2.N.000000.4.ANR"
+    name: "HICP - Overall index, annual rate of change (Euro area)"
+    source: ecb
+    vendor_key: "M.U2.N.000000.4.ANR"
+    license: "© ECB, CC BY 4.0"
+    url: "https://data.ecb.europa.eu/data/datasets/ICP/ICP.M.U2.N.000000.4.ANR"
+    first_date: "1996-01-01"
+    last_date: "present"
+    frequency: "M"
+    unit: "% y/y"
+    asset_class: "macro"
+    notes: "Headline HICP for Euro area (changing composition), YoY change."
+
+  # ----------------------------------------------------------------
+  # Yahoo Finance (via yfinance, privater Gebrauch)
+  # https://finance.yahoo.com  — keine Weiterverteilung der Roh-Daten
+  # Tabelle: prices_daily (OHLCV)
+  # ----------------------------------------------------------------
+  - series_id: "YAHOO:AAPL"
+    name: "Apple Inc. (Common Stock)"
+    source: yahoo
+    vendor_key: "AAPL"
+    license: "Yahoo ToS — privater Gebrauch"
+    url: "https://finance.yahoo.com/quote/AAPL"
+    first_date: "1980-12-12"
+    last_date: "present"
+    frequency: "D"
+    unit: "USD"
+    asset_class: "equity"
+    notes: "Daily OHLCV via yfinance."
+
+  - series_id: "YAHOO:MSFT"
+    name: "Microsoft Corp. (Common Stock)"
+    source: yahoo
+    vendor_key: "MSFT"
+    license: "Yahoo ToS — privater Gebrauch"
+    url: "https://finance.yahoo.com/quote/MSFT"
+    first_date: "1986-03-13"
+    last_date: "present"
+    frequency: "D"
+    unit: "USD"
+    asset_class: "equity"
+    notes: "Daily OHLCV via yfinance."
+
+  - series_id: "YAHOO:^GSPC"
+    name: "S&P 500 Index"
+    source: yahoo
+    vendor_key: "^GSPC"
+    license: "Yahoo ToS — privater Gebrauch"
+    url: "https://finance.yahoo.com/quote/%5EGSPC"
+    first_date: "1928-01-03"
+    last_date: "present"
+    frequency: "D"
+    unit: "Index"
+    asset_class: "index"
+    notes: "Daily OHLCV via yfinance. Use 'close' as the index level."

@@ -1,0 +1,29 @@
+# Ticker-Inventar.
+# Struktur:
+#   regions.<region>.exchanges:      [LISTE von Venue-Codes]
+#   regions.<region>.tickers:        [LISTE {symbol, name, currency, exchange, yahoo, isin?}]
+#
+# Anweisung an den implementierenden Agenten:
+# - Vollständige Listen inventarisieren (kein "TODO").
+# - ~500 US, ~600 EU, ~300 Japan, ~300 EM.
+# - Reihenfolge: Large-Cap zuerst, dann Mid-Cap.
+# - Quelle: Wikipedia-Indexmitgliederlisten, public screeners, Vendor-Bulk-Files.
+# - Cross-Check: jeder Ticker muss in yfinance erfolgreich ladbar sein.
+
+regions: {}  # TODO: inventarisieren
+# Beispiel-Stub (zu ersetzen):
+# regions:
+#   us:
+#     exchanges: [NYSE, NASDAQ]
+#     tickers:
+#       - {symbol: AAPL, name: "Apple Inc.", currency: USD, exchange: NASDAQ, yahoo: AAPL, isin: US0378331005}
+#       - {symbol: MSFT, name: "Microsoft Corp.", currency: USD, exchange: NASDAQ, yahoo: MSFT, isin: US5949181045}
+#   eu:
+#     exchanges: [XETR, EPA, LSE]
+#     tickers: []
+#   japan:
+#     exchanges: [TYO]
+#     tickers: []
+#   em:
+#     exchanges: [HKEX, SSE, NSE, BSE, SZSE]
+#     tickers: []

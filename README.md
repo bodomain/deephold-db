@@ -12,22 +12,26 @@ Asset Allocation, Risikomodellierung, Makroanalyse, ML-Features.
 
 ## Status (lokal, manuell verifiziert)
 
-Diese erste Iteration läuft end-to-end:
+Diese Iteration läuft end-to-end:
 
 - **PostgreSQL 16** läuft via `docker compose up -d` (Container `finance_pg`).
 - **Alembic** hat die initiale Migration `0001_initial` angewendet → **14 Tabellen**
   + `alembic_version` in der DB.
-- **SQLAlchemy-ORM** roundtrip funktioniert (Vendor, MacroSeries, MacroObservation
-  insert+select getestet).
-- **FRED-Vendor-Adapter** ist implementiert, fetcht über `httpx`, retry via
-  `tenacity` (5s/30s/120s), rate-limit via token-bucket, parst in Polars-DF.
-- **`scripts/query_db.py`** Standalone-CLI: liest `macro_observations`, gibt
-  formatierte Tabelle aus, seedet Demo-Daten (oder echte FRED-Daten) wenn leer.
-- **18 Unit-Tests** grün (config, FRED-Adapter, ORM-Modell-Registrierung).
+- **SQLAlchemy-ORM** roundtrip funktioniert (Vendor, MacroSeries, MacroObservation,
+  Instrument, InstrumentIdentifier, PricesDaily).
+- **3 Vendor-Adapter**: FRED, ECB, Yahoo Finance. Jeder mit token-bucket,
+  tenacity-retry, live-verifiziert.
+- **`scripts/query_db.py`** Standalone-CLI: liest `macro_observations` und
+  `prices_daily`, seedet Demo/FRED/ECB/Yahoo-Daten wenn leer.
+- **`scripts/build_notebook.py`** baut `notebooks/01_macro_overview.ipynb`
+  (3x2 Plotly-Grid mit Macro + Equity) und exportiert HTML.
+- **`tui/`** OpenTUI-Explorer (Bun + React 19): 2-Pane-TUI für 12 Serien,
+  Live-DB-Connection via node-postgres.
+- **41 Unit-Tests** grün (FRED, ECB, Yahoo, config, ORM).
 - **ruff** lint + format clean.
 
-Bewusst noch nicht da: ECB/Bundesbank/Yahoo/Stooq, Prefect-Flows, Pandera-DQ,
-Inventar in `config/series_registry.yaml` und `config/tickers.yaml`.
+Bewusst noch nicht da: Prefect-Flows, Pandera-DQ,
+Bundesbank/Stooq-Vendor, vollständige Ticker-Inventur in `config/`.
 
 ## Quickstart (lokal, ohne Poetry)
 
@@ -57,9 +61,33 @@ docker compose up -d postgres
 make init          # poetry install + docker compose up + alembic upgrade head
 make test          # pytest
 make check         # ruff + mypy + test
+make tui           # OpenTUI-Explorer starten
 ```
 
 UI: Adminer :8080, Prefect :4200 (nach `make up`).
+
+## TUI-Explorer (`tui/`)
+
+OpenTUI-basierter Terminal-Explorer für die DB. Eigener TS/Bun-Layer,
+spricht via `pg` direkt mit der gleichen Postgres.
+
+```bash
+# Voraussetzung: Bun installieren (einmalig)
+curl -fsSL https://bun.sh/install | bash
+
+# Starten
+make tui
+# oder
+cd tui && bun install && bun run start
+```
+
+**Features (MVP, ~400 LoC):**
+
+- 2-Pane-Layout: links 12 Serien (Macro M / Equity E), rechts Stats + letzte 30 Werte
+- Tastatur: `↑↓/jk` navigieren, `g/G` top/end, `r` refresh, `q` quit
+- Live-Daten aus `macro_observations` + `prices_daily` (FRED, ECB, Yahoo)
+
+Siehe `tui/README.md` für Details.
 
 ## Query-Skript (`scripts/query_db.py`)
 
@@ -174,6 +202,7 @@ finance_data/
 │   └── utils/               # config, logging, retry, rate_limit
 ├── tests/                   # pytest
 ├── scripts/                 # Standalone-CLIs (query_db.py, build_notebook.py)
+├── tui/                     # OpenTUI-Explorer (Bun + React 19)
 ├── notebooks/               # Jupyter-Notebooks (01_macro_overview.ipynb)
 ├── sql/                     # manuelle Queries / Views
 └── docs/                    # data_dictionary, sources, methodology
