@@ -1,0 +1,182 @@
+% =====================================================================
+% Kapitel 1: Einführung und Projektüberblick
+% =====================================================================
+
+\chapter{Einführung und Projektüberblick}
+
+\label{ch:einfuehrung}
+
+\section{Das Problem}
+
+Quantitative Finanzforschung lebt von Daten -- aber an genau diesen
+Daten scheitern die meisten Hobby- und Kleinprojekte:
+
+\begin{itemize}
+  \item \textbf{Datenquellen sind fragmentiert}. Makro-Daten kommen vom
+        FED, Aktien-Daten von Yahoo, Anleihe-Daten vom Treasury, FX-Daten
+        von der EZB, Rohstoff-Daten von der COMEX. Jede Quelle hat ein
+        anderes Format, eine andere API, andere Lizenzbedingungen.
+  \item \textbf{Historie ist teuer}. Bloomberg-Terminals kosten
+        20.000\,{}/Jahr, Refinitiv vergleichbar. Für
+        Hobby-Forscher unbezahlbar.
+  \item \textbf{Open Data ist da, aber unhandlich}. FRED, EZB SDMX,
+        Yahoo Finance -- alle frei verfügbar, aber jede mit eigener
+        API-Linie, eigenen Rate-Limits, eigenem Datenformat.
+  \item \textbf{Reproduzierbarkeit ist schwer}. Wenn der Code zur
+        Datensammlung nicht versioniert und mitprotokolliert ist,
+        weiß man sechs Monate später nicht mehr, welcher Pull
+        welche Daten geliefert hat.
+  \item \textbf{Backtesting braucht saubere PIT-Daten}. Eine
+        Aktienkurs-Zeitreihe vom 1.~Januar 2020 muss zu jedem
+        späteren Zeitpunkt exakt so aussehen, wie sie tatsächlich
+        an diesem Tag bekannt war -- inklusive aller nachträglichen
+        Splits, Dividenden und Restatements.
+\end{itemize}
+
+\section{Die Lösung: \code{deephold\_db}}
+
+\code{deephold\_db} ist eine selbst-gehostete, lokal laufende
+Finanzmarktdatenbank, die alle genannten Probleme auf eine pragmatische
+Art adressiert:
+
+\begin{definition}
+\textbf{Retail-Research-Datenbank}
+Eine Datenbank, die \emph{für den privaten und Forschungsgebrauch}
+konzipiert ist. Sie ist nicht für Hochfrequenzhandel, regulatorische
+Compliance oder institutionelle Vermögensverwaltung gedacht. Sie
+priorisiert \textbf{einfache Bedienung} und \textbf{kostengünstigen
+Betrieb} über \textbf{Latenz} und \textbf{vollständige PIT-Treue}.
+\end{definition}
+
+Die Kernidee: \emph{ein Befehl}, \emph{eine Datenbank}, \emph{mehrere
+Datenquellen}, \emph{mehrere Frontends}. Konkret bedeutet das:
+
+\begin{enumerate}
+  \item \textbf{Ein-Befehl-Setup}. \code{make init} startet Docker,
+        installiert Python-Dependencies, legt das Datenbankschema an
+        und seedet die ersten Daten. Alles in unter 10~Minuten.
+  \item \textbf{Mehrere Datenquellen, einheitliches Schema}. FRED
+        (FED-Wirtschaftsdaten), EZB SDMX (EUR-Geldmarkt, EUR-Anleihen,
+        EUR-FX) und Yahoo Finance (US-Aktien, ETFs, Indizes) werden über
+        Vendor-Adapter in dasselbe Schema gemappt.
+  \item \textbf{Mehrere Frontends}.
+        \begin{itemize}
+          \item \textbf{Jupyter-Notebook} (\code{build\_notebook.py})
+                mit Plotly für interaktive Charts.
+          \item \textbf{OpenTUI-Explorer} (Bun + React 19) für
+                schnelles Durchsuchen der Datenbank im Terminal.
+          \item \textbf{SQL direkt} via psql für Ad-hoc-Analysen.
+          \item \textbf{Python-API} (SQLAlchemy ORM) für reproduzierbare
+                Research-Skripte.
+        \end{itemize}
+  \item \textbf{Reproduzierbarkeit}. Jede Zeile in der Datenbank trägt
+        einen Zeitstempel (\code{ingested\_at}) und eine
+        \code{vendor\_id}. Damit lässt sich auch Monate später
+        rekonstruieren, woher ein bestimmter Wert stammt.
+  \item \textbf{Walk-Forward-Backtest-Framework}. Eine
+        vereinfachte Version des AEGIS-Algorithmus aus dem
+        quantitativen Finanzpaper von Chakraborty und Singh
+        (2026) demonstriert, wie die gesammelten Daten für
+        systematische Strategieentwicklung genutzt werden können.
+\end{enumerate}
+
+\section{Anwendungsfälle}
+
+\begin{beispiel}
+\textbf{Typische Anwendungsfälle}
+  \begin{itemize}
+    \item \textbf{Portfolio-Analyse}: ``Wie hat sich mein
+          60/40-Aktien/Anleihen-Portfolio in den letzten 20~Jahren
+          entwickelt?''
+    \item \textbf{Makro-Research}: ``Wie korreliert die
+          US-Arbeitslosenquote mit S\&P-500-Renditen in den
+          letzten 10~Jahren?''
+    \item \textbf{Faktor-Analyse}: ``Lohnt sich Value-Investing
+          in Small-Caps noch?''
+    \item \textbf{Backtest-Vorbereitung}: ``Lade mir 20~Jahre
+          S\&P~500- und NASDAQ-Daten, damit ich meinen
+          Mean-Reversion-Filter darauf testen kann.''
+    \item \textbf{Bildungsprojekte}: ``Ich will meinen Studierenden
+          zeigen, wie ein professionelles Datenprodukt
+          aussieht.''
+  \end{itemize}
+\end{beispiel}
+
+\section{Nicht-Ziele}
+
+\begin{warnung}
+\rmfamily\itshape
+Folgende Funktionen sind \emph{bewusst nicht} Teil dieses Projekts:
+
+\begin{itemize}
+  \item Echtzeitdaten oder Intraday-Ticks.
+  \item Echtes Point-in-Time mit allen Splits/Dividenden zum
+        jeweiligen historischen Zeitpunkt (nur adjusted-close,
+        keine nachträglichen Restatements).
+  \item Bond-CUSIP-Level-Daten (nur aggregierte Anleihe-ETFs
+        oder Makro-Yields).
+  \item Multi-Vendor-Reconciliation (Preisvergleiche zwischen
+        Datenquellen).
+  \item Historische Index-Mitgliedschaften (``Wann wurde AAPL
+        in den S\&P~500 aufgenommen?'').
+  \item Historische Credit-Ratings.
+\end{itemize}
+\end{warnung}
+
+\section{Architektur auf einen Blick}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.8cm and 1.2cm,
+  box/.style={rectangle, draw, thick, rounded corners, minimum width=2.8cm, minimum height=0.8cm, align=center, font=\small},
+  layer/.style={rectangle, draw, very thick, rounded corners, fill=#1!10, inner sep=0.4cm},
+  arrow/.style={-Latex, thick},
+]
+  \node[box, fill=blue!20] (python) {Python 3.11\\(SQLAlchemy, Polars)};
+  \node[box, fill=green!20, right=of python] (db) {PostgreSQL 16\\(14 Tabellen)};
+  \node[box, fill=yellow!20, right=of db] (bun) {Bun + React 19\\(OpenTUI)};
+
+  \node[box, fill=red!20, below=of python] (vendors) {Vendor-Adapter\\(FRED, ECB, Yahoo)};
+  \node[box, fill=cyan!20, below=of db] (etl) {ETL-Pipeline\\(Seeder, query\_db.py)};
+  \node[box, fill=orange!20, below=of bun] (notebook) {Plotly-Notebook\\(build\_notebook.py)};
+
+  \draw[arrow] (vendors) -- node[above, font=\scriptsize] {insert} (db);
+  \draw[arrow] (etl) -- node[above, font=\scriptsize] {read/write} (db);
+  \draw[arrow] (python) -- node[above, font=\scriptsize] {SQLAlchemy} (db);
+  \draw[arrow] (bun) -- node[above, font=\scriptsize] {node-postgres} (db);
+  \draw[arrow] (notebook) -- node[above, font=\scriptsize] {read-only} (db);
+\end{tikzpicture}
+\caption{High-Level-Architektur von \code{deephold\_db}: Python-Backend
+  füllt die DB über Vendor-Adapter, das TUI und das Notebook lesen
+  direkt aus der DB. Die einzige Kopplung zwischen den Layern ist
+  die Datenbank selbst.}
+\label{fig:arch-overview}
+\end{figure}
+
+Abbildung~\ref{fig:arch-overview} zeigt die drei Schichten des
+Projekts:
+
+\begin{enumerate}
+  \item \textbf{Python-Backend} (links): Enthält die Vendor-Adapter
+        (FRED, ECB, Yahoo), die ETL-Pipeline (Seeder, \code{query\_db.py})
+        und die Analytics-Module (Returns, Metriken, VAM-Backtest).
+        Spricht via SQLAlchemy mit der DB.
+  \item \textbf{PostgreSQL-Datenbank} (Mitte): Single Source of Truth.
+        14~Tabellen -- \code{venues}, \code{vendors}, \code{instruments},
+        \code{instrument\_identifiers}, \code{trading\_calendars},
+        \code{prices\_raw}, \code{prices\_daily}, \code{corporate\_actions},
+        \code{fx\_rates\_daily}, \code{bond\_yields}, \code{macro\_series},
+        \code{macro\_observations}, \code{dq\_runs}, \code{dq\_findings}.
+  \item \textbf{TypeScript-TUI} (rechts): OpenTUI-Explorer in Bun.
+        Liest die DB via \code{node-postgres}, kein Python im Hot-Path.
+        Maximale Performance für den Endbenutzer.
+\end{enumerate}
+
+\section{Was Sie als Nächstes erwartet}
+
+Das nächste Kapitel~--\ref{ch:grundlagen}--~bringt Sie auf den
+nötigen Wissensstand, falls Sie mit einem der verwendeten Konzepte
+noch nicht vertraut sind. Falls Sie bereits Erfahrung mit PostgreSQL,
+Docker, Python und TypeScript haben, können Sie direkt mit
+Kapitel~\ref{ch:infrastruktur} fortfahren.

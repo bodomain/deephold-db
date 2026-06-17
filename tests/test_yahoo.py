@@ -9,7 +9,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from finance_data.vendors.yahoo import YahooVendor, _yahoo_to_polars
+from deephold_db.vendors.yahoo import YahooVendor, _yahoo_to_polars
 
 # --- Fixtures --------------------------------------------------------------
 

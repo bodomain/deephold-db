@@ -1,5 +1,5 @@
-// Shared types for finance-data-tui.
-// Mirrors the SQL schema in src/finance_data/db/models.py.
+// Shared types for deephold-db-tui.
+// Mirrors the SQL schema in src/deephold_db/db/models.py.
 
 export type SeriesKind = "macro" | "equity";
 

@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # --- Database ----------------------------------------------------------
     database_url: str = Field(
-        default="postgresql+psycopg://finance:finance@localhost:5432/finance",
+        default="postgresql+psycopg://deephold:deephold@localhost:5432/deephold",
         alias="DATABASE_URL",
     )
 

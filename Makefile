@@ -1,11 +1,11 @@
-# finance_data — Makefile
+# deephold_db — Makefile
 # Reproduzierbare Targets: Stack, Migrationen, Ingest, Tests, DQ.
 
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
 PYTHON  ?= poetry run python
-DB_DSN  ?= postgresql+psycopg://$${POSTGRES_USER:-finance}:$${POSTGRES_PASSWORD:-finance}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-finance}
+DB_DSN  ?= postgresql+psycopg://$${POSTGRES_USER:-deephold}:$${POSTGRES_PASSWORD:-deephold}@localhost:$${POSTGRES_PORT:-5432}/$${POSTGRES_DB:-deephold}
 COMPOSE ?= docker compose
 
 .DEFAULT_GOAL := help
@@ -23,7 +23,7 @@ init: ## Komplett-Setup: deps + Stack + Migrations
 	$(COMPOSE) up -d
 	@echo "Warte auf Postgres ..."
 	@for i in $$(seq 1 30); do \
-	  $(COMPOSE) exec -T postgres pg_isready -U $${POSTGRES_USER:-finance} >/dev/null 2>&1 && break; \
+	  $(COMPOSE) exec -T postgres pg_isready -U $${POSTGRES_USER:-deephold} >/dev/null 2>&1 && break; \
 	  sleep 1; \
 	done
 	$(MAKE) migrate
@@ -47,7 +47,7 @@ ps: ## Container-Status
 
 .PHONY: shell-db
 shell-db: ## psql-Shell in die finance-DB
-	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-finance} -d $${POSTGRES_DB:-finance}
+	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-deephold} -d $${POSTGRES_DB:-deephold}
 
 # --- Schema / Migrations ---------------------------------------------------
 
@@ -105,7 +105,7 @@ tui-test: ## TUI-Tests (Unit + Integration)
 
 .PHONY: test-cov
 test-cov: ## pytest mit Coverage
-	DATABASE_URL=$(DB_DSN) $(PYTHON) -m pytest --cov=src/finance_data --cov-report=term-missing
+	DATABASE_URL=$(DB_DSN) $(PYTHON) -m pytest --cov=src/deephold_db --cov-report=term-missing
 
 .PHONY: dq-full
 dq-full: ## Vollständige DB-Validierung
@@ -147,3 +147,21 @@ clean-pyc: ## __pycache__ + .pyc entfernen
 clean-venv: ## Poetry-Venv neu erstellen
 	poetry env remove --all || true
 	poetry install
+
+# --- Handbuch (LaTeX) ------------------------------------------------------
+
+.PHONY: handbuch
+handbuch: ## LaTeX-Handbuch zu docs/handbuch/deephold_db.pdf bauen
+	@if ! command -v pdflatex >/dev/null 2>&1; then \
+		echo "pdflatex nicht gefunden. Install: 'make handbuch-install-deps'"; \
+		exit 1; \
+	fi
+	$(MAKE) -C docs/handbuch build
+
+.PHONY: handbuch-install-deps
+handbuch-install-deps: ## Fehlende TeX-Live-Pakete installieren
+	$(MAKE) -C docs/handbuch install-deps
+
+.PHONY: handbuch-clean
+handbuch-clean: ## Auxiliary-Files des Handbuchs entfernen
+	$(MAKE) -C docs/handbuch clean

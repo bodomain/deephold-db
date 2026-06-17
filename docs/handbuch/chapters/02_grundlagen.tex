@@ -1,0 +1,559 @@
+% =====================================================================
+% Kapitel 2: Grundlagen
+% =====================================================================
+
+\chapter{Grundlagen}
+
+\label{ch:grundlagen}
+
+Dieses Kapitel erklärt alle Fachbegriffe, die in den Folgekapiteln
+verwendet werden. Wer mit allen Konzepten vertraut ist, kann es
+überspringen und bei Unklarheiten als Nachschlagewerk nutzen.
+
+\section{Datenbank-Grundlagen}
+
+\begin{definition}
+\textbf{Relationale Datenbank}
+Eine \emph{relationale Datenbank} organisiert Daten in
+\emph{Tabellen} (auch \emph{Relationen} genannt) mit Zeilen (Datensätze)
+und Spalten (Attribute). Zwischen den Tabellen bestehen
+\emph{Beziehungen} über \emph{Fremdschlüssel} (\foreign{foreign key}).
+Die meisten modernen Datenbanken -- einschließlich PostgreSQL --
+sprechen die standardisierte Abfragesprache SQL.
+\end{definition}
+
+\begin{definition}
+\textbf{SQL (Structured Query Language)}
+SQL ist die standardisierte Abfragesprache für relationale Datenbanken.
+SQL unterteilt sich in Untergruppen:
+
+\begin{itemize}
+  \item \textbf{DDL} (Data Definition Language): \code{CREATE TABLE},
+        \code{ALTER TABLE}, \code{DROP TABLE}.
+  \item \textbf{DML} (Data Manipulation Language): \code{SELECT},
+        \code{INSERT}, \code{UPDATE}, \code{DELETE}.
+  \item \textbf{DCL} (Data Control Language): \code{GRANT},
+        \code{REVOKE}.
+\end{itemize}
+\end{definition}
+
+\begin{definition}
+\textbf{PostgreSQL}
+PostgreSQL -- oft kurz \emph{Postgres} -- ist ein
+\emph{objekt-relationales} Datenbankmanagementsystem (ORDBMS). Es ist
+quelloffen, kostenlos, seit über 30~Jahren in Entwicklung und gilt als
+eine der stabilsten und funktionsreichsten Open-Source-Datenbanken.
+PostgreSQL unterstützt JSON/JSONB, Volltextsuche, Window Functions und
+vieles mehr.
+\end{definition}
+
+\begin{beispiel}
+\textbf{PostgreSQL-Verbindung in Python}
+\begin{lstlisting}[language=python]
+import psycopg
+
+conn = psycopg.connect(
+    host="localhost",
+    port=5432,
+    user="deephold",
+    password="deephold",
+    dbname="deephold",
+)
+with conn.cursor() as cur:
+    cur.execute("SELECT COUNT(*) FROM macro_observations")
+    print(cur.fetchone())
+\end{lstlisting}
+\end{beispiel}
+
+\begin{definition}
+\textbf{Index}
+Ein \emph{Index} ist eine zusätzliche Datenstruktur, die das schnelle
+Suchen in einer Tabelle ermöglicht -- analog zum Stichwortverzeichnis
+eines Buchs. Ein Index auf Spalte~\code{X} beschleunigt Abfragen
+mit \code{WHERE X = ...}, verlangsamt aber \code{INSERT}-Operationen
+und kostet zusätzlichen Speicherplatz. Daher werden nur Spalten
+indiziert, die häufig in \code{WHERE}-Klauseln vorkommen.
+\end{definition}
+
+\begin{beispiel}
+\textbf{Index-Definition}
+\begin{lstlisting}[language=sql]
+CREATE INDEX ix_prices_daily_date
+  ON prices_daily (date);
+
+CREATE UNIQUE INDEX ix_instrument_identifiers_scheme_value
+  ON instrument_identifiers (scheme, value);
+\end{lstlisting}
+\end{beispiel}
+
+\begin{definition}
+\textbf{JSONB}
+JSONB ist die binäre Variante des JSON-Datentyps in PostgreSQL. Werte
+werden nicht als Text, sondern als effizient geparste interne Struktur
+gespeichert. Das ermöglicht Indexierung auf JSON-Feldern und
+schnelle Pfad-Queries (\code{data-\texttt{>}'field'}).
+\end{definition}
+
+\section{Python-Grundlagen}
+
+\begin{definition}
+\textbf{Python}
+Python ist eine interpretierte, dynamisch typisierte
+Hochsprachen-Programmiersprache. Sie wird im Data-Science-Umfeld
+besonders wegen ihrer einfachen Syntax, ihrer umfangreichen
+Standardbibliothek und ihres dichten Ökosystems an
+Dritt-Bibliotheken geschätzt. Das Projekt verwendet Python in
+Version~3.11 oder neuer.
+\end{definition}
+
+\begin{definition}
+\textbf{Poetry}
+Poetry ist ein modernes Tool für \emph{Dependency-Management} in
+Python-Projekten. Es verwaltet die \code{pyproject.toml}-Datei, legt
+virtuelle Environments automatisch an und löst transitive
+Abhängigkeiten auf. In diesem Projekt wird es durch
+\code{pip} und ein venv-Verzeichnis ersetzt (siehe Kapitel~\ref{ch:infrastruktur}),
+weil Poetry nicht überall verfügbar ist.
+\end{definition}
+
+\begin{definition}
+\textbf{Pandas}
+Pandas ist die Standard-Bibliothek für tabellarische Datenverarbeitung
+in Python. Die zentrale Datenstruktur ist das \emph{DataFrame} -- eine
+beschriftete, zweidimensionale Tabelle. Pandas wird für Daten-
+Cleaning, Resampling, Grouping und vieles mehr verwendet.
+\end{definition}
+
+\begin{definition}
+\textbf{Polars}
+Polars ist eine neuere, schnellere Alternative zu Pandas, implementiert
+in Rust. Polars nutzt \emph{Lazy Evaluation} und \emph{Columnar
+Storage}, was es auf großen Datensätzen drastisch schneller macht.
+Die API ähnelt Pandas, ist aber stärker typisiert.
+\end{definition}
+
+\begin{beispiel}
+\textbf{Polars vs.\ Pandas -- ein einfaches Beispiel}
+\begin{lstlisting}[language=python]
+import polars as pl
+import pandas as pd
+
+# Beide erzeugen das gleiche Ergebnis:
+df_pl = pl.DataFrame({"a": [1, 2, 3], "b": [4.0, 5.0, 6.0]})
+df_pd = pd.DataFrame({"a": [1, 2, 3], "b": [4.0, 5.0, 6.0]})
+
+# Polars:
+mean_b = df_pl["b"].mean()  # Lazy, gibt eine Expression zurück
+print(df_pl.select(pl.col("b").mean()))  # 5.0
+
+# Pandas:
+mean_b = df_pd["b"].mean()  # Eager, gibt einen float zurück
+print(mean_b)  # 5.0
+\end{lstlisting}
+\end{beispiel}
+
+\begin{definition}
+\textbf{SQLAlchemy}
+SQLAlchemy ist ein \emph{ORM-Toolkit} (Object-Relational Mapper) für
+Python. Es erlaubt, Datenbank-Tabellen als Python-Klassen zu
+modellieren und Abfragen in Python-Syntax zu schreiben, ohne rohes
+SQL zu schreiben. SQLAlchemy unterstützt zwei Stile:
+
+\begin{itemize}
+  \item \textbf{Core}: niedrigschwellige SQL-Bausteine
+        (\code{select()}, \code{insert()} etc.).
+  \item \textbf{ORM}: hochschwellige, objekt-orientierte
+        Zugriffsschicht mit Klassen für jede Tabelle.
+\end{itemize}
+In diesem Projekt wird die ORM-Schicht verwendet.
+\end{definition}
+
+\begin{beispiel}
+\textbf{SQLAlchemy-Definition einer Tabelle}
+\begin{lstlisting}[language=python]
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+class Base(DeclarativeBase):
+    pass
+
+class Instrument(Base):
+    __tablename__ = "instruments"
+    instrument_id: Mapped[int] = mapped_column(primary_key=True)
+    asset_class: Mapped[str] = mapped_column()
+    name: Mapped[str] = mapped_column()
+    # ...
+\end{lstlisting}
+\end{beispiel}
+
+\begin{definition}
+\textbf{Alembic}
+Alembic ist das offizielle Migrationswerkzeug für SQLAlchemy. Es
+verwaltet \emph{Schema-Migrationen} -- das Hinzufügen, Ändern oder
+Löschen von Tabellen und Spalten, ohne Daten zu verlieren. Jede
+Migration ist eine Python-Datei mit zwei Funktionen: \code{upgrade()}
+und \code{downgrade()}.
+\end{definition}
+
+\begin{beispiel}
+\textbf{Alembic-Migration -- sehr vereinfacht}
+\begin{lstlisting}[language=python]
+def upgrade() -> None:
+    op.create_table(
+        "macro_series",
+        sa.Column("series_id", sa.Text, primary_key=True),
+        sa.Column("name", sa.Text),
+        # ...
+    )
+
+def downgrade() -> None:
+    op.drop_table("macro_series")
+\end{lstlisting}
+\end{beispiel}
+
+\section{Docker und Container}
+
+\begin{definition}
+\textbf{Container}
+Ein \emph{Container} ist eine isolierte Laufzeit-Umgebung für eine
+Anwendung. Anders als bei virtuellen Maschinen wird nicht der
+gesamte Rechner virtualisiert, sondern nur die
+\emph{Anwendungs-Layer} (Binaries, Libraries, Konfiguration).
+Container starten in Sekunden, nicht in Minuten, und sind sehr
+ressourcenschonend.
+\end{definition}
+
+\begin{definition}
+\textbf{Docker}
+Docker ist die populärste Container-Engine. Sie packt eine Anwendung
+in ein \emph{Image} (eine Art Bauplan) und startet daraus
+\emph{Container}. Ein Image wird durch ein \code{Dockerfile}
+beschrieben, ein Container ist eine laufende Instanz eines Images.
+\end{definition}
+
+\begin{definition}
+\textbf{Docker Compose}
+Docker Compose ist ein Werkzeug zur Definition und zum Start
+\emph{mehrerer} Container als zusammengehörige Anwendung. Die
+Konfiguration erfolgt in einer \code{docker-compose.yml}-Datei.
+Mit \code{docker compose up -d} startet man alle Services im
+Hintergrund; mit \code{docker compose down} stoppt man sie wieder.
+\end{definition}
+
+\begin{beispiel}
+\textbf{docker-compose.yml -- Auszug}
+\begin{lstlisting}[language=yaml]
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: deephold
+      POSTGRES_PASSWORD: deephold
+      POSTGRES_DB: deephold
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deephold"]
+      interval: 5s
+\end{lstlisting}
+\end{beispiel}
+
+\begin{definition}
+\textbf{Docker Volume}
+Ein \emph{Volume} ist ein persistenter Speicherbereich, der vom
+Container unabhängig existiert. Wird ein Container gelöscht, bleiben
+Daten im Volume erhalten. \code{deephold\_db} definiert ein Volume
+\code{postgres\_data} für die Datenbank, damit die Daten
+Container-Updates überleben.
+\end{definition}
+
+\section{Networking-Grundlagen}
+
+\begin{definition}
+\textbf{HTTP (Hypertext Transfer Protocol)}
+HTTP ist das Standard-Protokoll für die Kommunikation zwischen
+Web-Clients und Web-Servern. Datenquellen wie FRED und Yahoo Finance
+bieten ihre Daten über \emph{RESTful HTTP}-APIs an. Ein typischer
+Aufruf ist \code{GET
+https://api.example.com/data?param=value}, der mit einem
+JSON-Array oder XML-Dokument beantwortet wird.
+\end{definition}
+
+\begin{definition}
+\textbf{Rate Limiting}
+Die meisten öffentlichen APIs begrenzen, wie viele Anfragen ein
+einzelner Client pro Zeiteinheit stellen darf -- das sogenannte
+\emph{Rate Limiting}. Wird das Limit überschritten, antwortet der
+Server mit HTTP 429 (Too Many Requests). Das Projekt implementiert
+ein \emph{Token-Bucket}-Verfahren, bei dem jeder Vendor ein eigenes
+Bucket mit konfigurierbarer Rate und Burst-Größe hat.
+\end{definition}
+
+\begin{beispiel}
+\textbf{Token-Bucket in Python}
+\begin{lstlisting}[language=python]
+import time
+
+class TokenBucket:
+    def __init__(self, rate_per_min: int, burst: int):
+        self.rate = rate_per_min / 60.0   # tokens per second
+        self.burst = burst
+        self.tokens = float(burst)
+        self.last = time.monotonic()
+
+    def take(self, n: int = 1) -> None:
+        now = time.monotonic()
+        elapsed = now - self.last
+        self.last = now
+        self.tokens = min(self.burst, self.tokens + elapsed * self.rate)
+        if self.tokens < n:
+            # Blockierend warten
+            time.sleep((n - self.tokens) / self.rate)
+            self.tokens = 0
+        else:
+            self.tokens -= n
+\end{lstlisting}
+\end{beispiel}
+
+\section{TypeScript- und TUI-Grundlagen}
+
+\begin{definition}
+\textbf{TypeScript}
+TypeScript ist eine Obermenge von JavaScript, die statische Typen
+hinzufügt. TypeScript-Code wird zu JavaScript compiliert und läuft
+dann in jeder JavaScript-Engine (z.\,B.\ Node.js oder Bun).
+\end{definition}
+
+\begin{definition}
+\textbf{Bun}
+Bun ist eine moderne JavaScript-/TypeScript-Runtime, ähnlich wie
+Node.js, aber deutlich schneller beim Start und bei der Installation
+von Dependencies. Bun enthält einen eingebauten
+\emph{Paketmanager}, einen \emph{Test-Runner} und einen
+\emph{Bundler}. Bun ist die Standard-Runtime für das in diesem
+Projekt verwendete OpenTUI-Framework.
+\end{definition}
+
+\begin{definition}
+\textbf{Terminal User Interface (TUI)}
+Eine \emph{TUI} ist ein textbasiertes Interface, das im Terminal
+läuft -- im Gegensatz zu einem GUI (grafisches User Interface).
+Im Gegensatz zu einem Kommandozeilen-Tool, das nur Text ein- und
+ausgibt, bietet eine TUI ein \emph{interaktives} Layout mit
+\emph{Widgets} wie Listen, Buttons, Formularfeldern und Charts.
+Beispiele: vim, htop, lazygit.
+\end{definition}
+
+\begin{definition}
+\textbf{OpenTUI}
+OpenTUI ist ein von Anomaly (https://anoma.ly) entwickeltes
+TUI-Framework. Es besteht aus einem in Zig geschriebenen
+\emph{Core} und TypeScript-Bindings mit React- und Solid.js-Support.
+Der Kern nutzt Yoga (Facebooks Flexbox-Engine), um Layouts zu
+berechnen -- genau wie im Web -- und rendert das Ergebnis in einen
+Terminal-Buffer.
+\end{definition}
+
+\begin{definition}
+\textbf{Yoga (Flexbox-Layout)}
+Yoga ist Facebooks plattformübergreifender Layout-Algorithmus, der
+\foreign{flexbox} -- das CSS-Layout-System -- in native Bibliotheken
+portiert. OpenTUI nutzt Yoga, um komplexe Layouts (Sidebars,
+Header, Footer, mehrspaltige Inhalte) pixelgenau im Terminal zu
+positionieren.
+\end{definition}
+
+\section{Finanzmarkt-Grundlagen}
+
+\begin{definition}
+\textbf{Adjusted Close}
+Der \emph{adjusted Close} ist der Schlusskurs eines Wertpapiers,
+\emph{nachbereinigt} um alle Kapitalmaßnahmen, die zwischen
+Kaufzeitpunkt und aktuellem Zeitpunkt stattgefunden haben -- vor
+allem Splits und Dividenden. Wenn eine Aktie am Tag~X zu 100\,{}
+schließt und am Folgetag einen 2:1-Split macht, dann steht der
+adjusted Close für Tag~X nicht bei 100, sondern bei 50\,{}.
+Backtests, die adjusted close verwenden, sind -- in der Retail-Praxis
+-- korrekt für historische Investoren.
+\end{definition}
+
+\begin{definition}
+\textbf{Log-Return vs.\ Simple Return}
+Es gibt zwei gängige Arten, Renditen zu berechnen:
+
+\begin{itemize}
+  \item \textbf{Simple Return}: $R_t = \frac{P_t - P_{t-1}}{P_{t-1}}$
+  \item \textbf{Log-Return}: $r_t = \ln\frac{P_t}{P_{t-1}}$
+\end{itemize}
+
+Log-Returns sind \emph{zeitadditiv} -- der Log-Return über zwei
+Tage ist die Summe der täglichen Log-Returns. Dies vereinfacht
+viele Berechnungen. Bei kleinen Returns (~$|r_t| < 5\%$) sind die
+beide Werte praktisch identisch.
+\end{definition}
+
+\begin{definition}
+\textbf{Volatilität (Vol)}
+Die \emph{Volatilität} ist die annualisierte Standardabweichung der
+Renditen. Sie ist das Standardmaß für das Risiko eines Wertpapiers
+oder Portfolios. Übliche Symbole: $\sigma$ (Sigma) oder $\text{vol}$.
+\end{definition}
+
+\begin{beispiel}
+\textbf{Volatilität berechnen}
+\begin{lstlisting}[language=python]
+import math
+import statistics
+
+# Tägliche Log-Returns einer Aktie
+daily_returns = [0.01, -0.02, 0.005, 0.015, -0.01, 0.0, 0.02]
+
+# Standardabweichung der täglichen Returns
+daily_vol = statistics.stdev(daily_returns)  # ≈ 0.0124
+
+# Annualisiert (252 Handelstage)
+annual_vol = daily_vol * math.sqrt(252)     # ≈ 0.196 = 19.6%
+\end{lstlisting}
+\end{beispiel}
+
+\begin{definition}
+\textbf{CAGR (Compound Annual Growth Rate)}
+Die \emph{CAGR} ist die durchschnittliche jährliche Wachstumsrate
+eines Investments über einen bestimmten Zeitraum, unter Annahme
+eines geometrischen (zinseszinsartigen) Wachstums:
+
+\[
+  \text{CAGR} = \left(\frac{V_\text{end}}{V_\text{start}}\right)^{1/n} - 1
+\]
+
+wobei $n$ die Anzahl der Jahre ist. Ein Investment, das von 100\,{}
+auf 200\,{} in 5~Jahren wächst, hat eine CAGR von
+$\sqrt[5]{200/100} - 1 \approx 14{,}87\%$.
+\end{definition}
+
+\begin{definition}
+\textbf{Sharpe Ratio}
+Die \emph{Sharpe Ratio} misst die \emph{renditebereinigte Performance}
+eines Investments -- die Überrendite pro Einheit Gesamtrisiko:
+
+\[
+  \text{Sharpe} = \frac{\bar{R}_p - R_f}{\sigma_p}
+\]
+
+wobei $\bar{R}_p$ die annualisierte Portfoliorendite, $R_f$ der
+risikofreie Zins (oft 4\,\% p.\,a.) und $\sigma_p$ die annualisierte
+Volatilität ist. Höher ist besser; eine Sharpe~>~1 gilt als gut,
+Sharpe~>~2 als exzellent.
+\end{definition}
+
+\begin{definition}
+\textbf{Sortino Ratio}
+Eine Variante der Sharpe Ratio, die nur die
+\emph{Abwärtsvolatilität} (negative Renditen) als Risikomaß
+verwendet. Sie ist aussagekräftiger für asymmetrische Strategien, die
+gerne hohe positive Volatilität (große Gewinne) in Kauf nehmen, aber
+negative Volatilität (Verluste) minimieren wollen.
+\end{definition}
+
+\begin{definition}
+\textbf{Maximum Drawdown (MaxDD)}
+Der \emph{Maximum Drawdown} ist der größte prozentuale Verlust vom
+einem vorherigen Höchststand bis zu einem nachfolgenden Tiefststand:
+
+\[
+  \text{MaxDD} = \min_t \frac{V_t - V_\text{peak}}{V_\text{peak}}
+\]
+
+Ein MaxDD von $-30\,\%$ bedeutet, dass das Portfolio irgendwann
+30\,\% unter seinem vorherigen Höchststand lag. Dies ist das
+wichtigste \emph{Tail-Risk}-Maß.
+\end{definition}
+
+\begin{definition}
+\textbf{Walk-Forward-Backtest}
+Ein \emph{Walk-Forward-Backtest} ist die realistischste Form der
+Backtest-Validierung. Anders als bei einem klassischen
+\emph{In-Sample}-Backtest wird das Modell nicht auf denselben Daten
+trainiert und evaluiert, auf denen es entwickelt wurde. Stattdessen:
+
+\begin{enumerate}
+  \item Trainiere auf $[t - L, t]$ (z.\,B.\ 12~Monate)
+  \item Evaluiere auf $[t, t+1]$ (z.\,B.\ 1~Monat)
+  \item Wandere ein Fenster weiter, wiederhole.
+\end{enumerate}
+
+So bekommt das Modell zu jedem Zeitpunkt nur Daten, die es auch
+\emph{tatsächlich} gehabt hätte -- kein \emph{Look-Ahead-Bias}.
+\end{definition}
+
+\begin{definition}
+\textbf{Look-Ahead-Bias}
+\emph{Look-Ahead-Bias} entsteht, wenn ein Backtest Informationen
+verwendet, die zum Entscheidungszeitpunkt in der Realität noch nicht
+verfügbar gewesen wären -- zum Beispiel ein Split, der erst nach dem
+Backtest-Datum in den Preisdaten nachträglich eingerechnet wurde.
+Walk-Forward-Tests eliminieren Look-Ahead-Bias vollständig.
+\end{definition}
+
+\begin{definition}
+\textbf{Survivorship-Bias}
+\emph{Survivorship-Bias} ist die Tendenz, nur die
+\emph{überlebenden} Unternehmen in einem Index zu betrachten. Wenn
+Sie z.\,B.\ die durchschnittliche Rendite der heutigen S\&P-500-Mitglieder
+in der Vergangenheit berechnen, ignorieren Sie all die Unternehmen,
+die zwischenzeitlich pleitegingen oder delistet wurden. Das
+überschätzt die wahre historische Performance.
+\end{definition}
+
+\begin{definition}
+\textbf{Momentum}
+\emph{Momentum} ist die Tendenz von Aktien, die in der Vergangenheit
+gut gelaufen sind, dies auch in der nahen Zukunft zu tun -- und
+umgekehrt. Die klassische Momentum-Strategie (Jegadeesh \&
+Titman, 1993) kauft die Top-10\,\% der zurückliegenden 12~Monate
+und leert die unteren 10\,\%. Momentum ist eines der am besten
+dokumentierten Anomalien in der Finanzmarktforschung.
+\end{definition}
+
+\begin{definition}
+\textbf{VAM (Volatility-Adjusted Momentum)}
+Die \emph{VAM} (manchmal auch \emph{Sharpe-Momentum} genannt)
+normalisiert die historische Rendite durch die historische
+Volatilität:
+
+\[
+  \text{VAM}_i = \frac{R_i}{\sigma_i}
+\]
+
+Eine Aktie mit 50\,\% Jahresrendite und 30\,\% Volatilität hat
+einen VAM von $1{,}67$. Eine andere mit 50\,\% Rendite aber
+60\,\% Volatilität hat einen VAM von $0{,}83$ -- sie ist bei
+gleicher Rendite deutlich riskanter. VAM hilft, den
+\emph{Winner's Curse} zu vermeiden: Aktien, die nur wegen hoher
+Beta gut laufen, werden aussortiert.
+\end{definition}
+
+\begin{definition}
+\textbf{Skip-Month}
+Beim Walk-Forward-Backtest ist es üblich, den letzten Monat vor
+dem Re-Balancing-Datum \emph{auszulassen} (das sogenannte
+\emph{Skip-Month}). Grund: Die jüngsten 21~Tage enthalten oft
+Mean-Reversion-Effekte und Mikrostruktur-Rauschen, die die
+Signale verzerren würden. Das AEGIS-Paper und dieses Projekt
+verwenden ein 21-Tage-Skip (Default).
+\end{definition}
+
+\begin{definition}
+\textbf{Friction / Transaction Costs}
+\emph{Friction} (auch \emph{Transaction Costs}) sind die
+\emph{Transaktionskosten} eines Backtests -- typischerweise als
+Bps (Basispunkte, 1~Bp = 0{,}01\,\%) pro umgesetztem Dollar
+ausgedrückt. Das AEGIS-Paper verwendet 10~Bp pro Handel, was
+etwa 1~Bp pro Monat-Portfolio-Turnover entspricht.
+\end{definition}
+
+\section{Was kommt als Nächstes?}
+
+Mit diesen Grundlagen bewaffnet, können Sie sich auf die
+Infrastruktur (Kapitel~\ref{ch:infrastruktur}) stürzen. Dort
+sehen wir, wie alle diese Komponenten in einem lauffähigen
+System zusammenspielen.

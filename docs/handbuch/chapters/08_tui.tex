@@ -1,0 +1,294 @@
+% =====================================================================
+% Kapitel 8: OpenTUI-Explorer
+% =====================================================================
+
+\chapter{OpenTUI-Explorer}
+
+\label{ch:tui}
+
+Der \emph{OpenTUI-Explorer} ist die schnellste und interaktivste
+Möglichkeit, die gesammelten Daten zu durchsuchen. Er läuft direkt
+im Terminal, ohne Jupyter, ohne Notebook, ohne Python-Overhead im
+Hot-Path.
+
+\section{Was ist OpenTUI?}
+
+\begin{definition}
+\textbf{OpenTUI}
+OpenTUI (https://opentui.com) ist ein von Anomaly (https://anoma.ly)
+entwickeltes TUI-Framework. Es besteht aus:
+
+\begin{itemize}
+  \item einem in \emph{Zig} geschriebenen \emph{Core}
+        (schnell, plattformübergreifend, nativ),
+  \item einer \emph{C-ABI} für Bindings aus jeder Sprache,
+  \item \emph{TypeScript}-Bindings mit React- und Solid.js-Support.
+\end{itemize}
+
+Der Kern nutzt \emph{Yoga} (Facebooks Flexbox-Engine) für Layouts
+und rendert das Ergebnis direkt in einen Terminal-Buffer.
+\end{definition}
+
+\begin{merke}
+OpenTUI ist \emph{die gleiche Engine}, die \foreign{opencode}
+(powered by Anomaly) und \foreign{terminal.shop} antreibt. Es
+befindet sich in aktiver Entwicklung, kann also Breaking Changes
+enthalten.
+\end{merke}
+
+\section{Warum TUI statt GUI?}
+
+\begin{figure}[ht]
+\centering
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Aspekt} & \textbf{TUI} & \textbf{GUI (z.\,B.\ Web-App)} \\
+  \midrule
+  Startup-Zeit          & $<$100 ms (Bun)         & $>$1 s (Browser) \\
+  Speicherverbrauch     & $\sim$50 MB               & $\sim$300 MB \\
+  Tastatur-Effizienz    & \foreign{Vim-style}      & Maus \\
+  SSH-/Server-tauglich  & ja                       & nur mit X-Forwarding \\
+  Visueller Reiz        & niedrig                  & hoch \\
+  Lernkurve             & hoch (Tasten lernen)     & niedrig (klicken) \\
+  \bottomrule
+\end{tabular}
+\caption{TUI vs.\ GUI}
+\label{fig:tui-vs-gui}
+\end{figure}
+
+Für die tägliche Exploration von Finanzmarktdaten -- springen
+zwischen 12~Serien, monatliche Updates prüfen, Daten vergleichen --
+ist eine TUI das richtige Werkzeug.
+
+\section{Architektur des TUI-Layers}
+
+Das TUI ist ein \emph{eigenständiger TypeScript-Subtree} im
+Projekt-Root:
+
+\begin{lstlisting}[language=shell, caption={TUI-Verzeichnisstruktur}]
+tui/
+├── package.json            # Bun + React 19 + OpenTUI 0.4
+├── tsconfig.json
+├── bun.lock
+├── src/
+│   ├── index.tsx          # Entry: createCliRenderer + createRoot
+│   ├── App.tsx            # Root-Komponente (Layout, State, Keyboard)
+│   ├── components/
+│   │   ├── SeriesList.tsx   # Linke Seite: 12 Serien
+│   │   └── SeriesDetail.tsx # Rechte Seite: Stats + Tail
+│   ├── data/
+│   │   ├── db.ts          # pg-Pool
+│   │   └── queries.ts     # 4 SQL-Queries
+│   └── types.ts           # TypeScript-Typen
+├── tests/                 # bun test (Unit + Integration)
+└── scripts/check-db.ts    # DB-Connectivity-Test
+\end{lstlisting}
+
+\section{Die Komponenten}
+
+\subsection{Entry Point: \code{index.tsx}}
+
+\begin{lstlisting}[language=typescript, caption={TUI-Entry-Point},label=lst:tui-entry]
+import { createCliRenderer } from "@opentui/core";
+import { createRoot } from "@opentui/react";
+import { App } from "./App";
+import { closePool } from "./data/db";
+
+const renderer = await createCliRenderer({ exitOnCtrlC: true });
+const root = createRoot(renderer);
+root.render(<App />);
+\end{lstlisting}
+
+Der Entry-Point ist minimal:
+
+\begin{enumerate}
+  \item \code{createCliRenderer()} -- startet den OpenTUI-Renderer,
+        der den Terminal-Buffer verwaltet.
+  \item \code{createRoot(renderer)} -- erzeugt einen React-Root,
+        der direkt in den OpenTUI-Buffer rendert.
+  \item \code{root.render(<App />)} -- mountet die App-Komponente.
+\end{enumerate}
+
+\subsection{Root: \code{App.tsx}}
+
+Die Root-Komponente verwaltet drei Dinge: \emph{State} (welche Serien
+sind in der DB, welche ist selektiert), \emph{Keyboard-Handling}
+und das \emph{Layout} (2-Spalten).
+
+\begin{lstlisting}[language=typescript, caption={TUI-App: State + Keyboard},label=lst:tui-app]
+function App() {
+  const renderer = useRenderer();
+  const [series, setSeries] = useState<SeriesRow[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    listSeries().then(setSeries).catch(/* ... */);
+  }, []);
+
+  useKeyboard((key) => {
+    if (key.name === "q") renderer.destroy();
+    if (key.name === "r") setRefreshToken(t => t + 1);
+    if (key.name === "up" || key.name === "k") setSelectedIndex(i => Math.max(0, i - 1));
+    if (key.name === "down" || key.name === "j") setSelectedIndex(i => Math.min(series.length - 1, i + 1));
+  });
+
+  return (
+    <box flexDirection="row">
+      <SeriesList series={series} selectedIndex={selectedIndex} />
+      {series[selectedIndex] && <SeriesDetail series={series[selectedIndex]} />}
+    </box>
+  );
+}
+\end{lstlisting}
+
+\subsection{SeriesList -- Linke Spalte}
+
+Die \code{SeriesList}-Komponente rendert alle geladenen Serien als
+\emph{scrollbare} Liste. Jede Zeile enthält:
+
+\begin{itemize}
+  \item \textbf{Badge}: \code{M} für Macro (FRED/ECB), \code{E} für
+        Equity (Yahoo).
+  \item \textbf{Series-ID}: z.\,B.\ \code{FRED:DGS3MO} oder
+        \code{ECB:EXR:USD.EUR.SP00.A}.
+  \item \textbf{Vendor-Tag}: \code{fred}, \code{ecb}, \code{yahoo}.
+  \item \textbf{Row-Count}: rechtsbündig für schnelles Scannen.
+\end{itemize}
+
+\subsection{SeriesDetail -- Rechte Spalte}
+
+Die \code{SeriesDetail}-Komponente zeigt für die ausgewählte Serie:
+
+\begin{itemize}
+  \item \textbf{Header}: Series-ID + Name.
+  \item \textbf{Stats-Panel}: rows, first/last date, unit, source,
+        min/max/mean.
+  \item \textbf{Tail-Tabelle}: die letzten 30~Werte, bei Macro
+        als \code{date, value}, bei Equity als
+        \code{date, close, adj\_close, vol}.
+\end{itemize}
+
+\section{Die SQL-Queries}
+
+Das TUI spricht \emph{direkt} mit der PostgreSQL-DB via
+\code{node-postgres} -- es gibt keinen Python-Overhead im Hot-Path.
+
+\begin{lstlisting}[language=typescript, caption={4 SQL-Queries im TUI}]
+const LIST_SERIES_SQL = `
+  SELECT 'macro' AS kind, series_id AS id, name, source, frequency, unit, COUNT(*)::int AS n
+  FROM macro_observations mo
+  JOIN macro_series ms USING (series_id)
+  GROUP BY series_id, name, source, frequency, unit
+  UNION ALL
+  SELECT 'equity' AS kind, COALESCE(ii.value, i.instrument_id::text) AS id,
+         i.name, 'yahoo' AS source, 'D' AS frequency, i.currency AS unit, COUNT(*)::int AS n
+  FROM prices_daily pd
+  JOIN instruments i USING (instrument_id)
+  LEFT JOIN instrument_identifiers ii
+    ON ii.instrument_id = i.instrument_id AND ii.scheme = 'YAHOO'
+  GROUP BY i.instrument_id, ii.value, i.name, i.currency
+  ORDER BY 1, 2
+`;
+
+const MACRO_TAIL_SQL = `
+  SELECT to_char(date, 'YYYY-MM-DD') AS date, value
+  FROM macro_observations WHERE series_id = $1
+  ORDER BY date DESC LIMIT $2
+`;
+
+const EQUITY_TAIL_SQL = `
+  SELECT to_char(pd.date, 'YYYY-MM-DD') AS date, pd.close, pd.adjusted_close, pd.volume
+  FROM prices_daily pd
+  JOIN instrument_identifiers ii
+    ON ii.instrument_id = pd.instrument_id AND ii.scheme = 'YAHOO'
+  WHERE ii.value = $1
+  ORDER BY pd.date DESC LIMIT $2
+`;
+
+const MACRO_STATS_SQL = `
+  SELECT COUNT(*)::int AS n, to_char(MIN(date), 'YYYY-MM-DD') AS first,
+         to_char(MAX(date), 'YYYY-MM-DD') AS last, MIN(value) AS min, MAX(value) AS max, AVG(value) AS mean
+  FROM macro_observations WHERE series_id = $1
+`;
+\end{lstlisting}
+
+Beachten Sie:
+
+\begin{itemize}
+  \item \textbf{UNION ALL} -- eine einzige Query listet Macro- und
+        Equity-Serien in einer Liste.
+  \item \code{COALESCE(ii.value, i.instrument\_id::text)} -- für
+        Equity-Serien wird der YAHOO-Ticker (\code{AAPL}) statt
+        der numerischen \code{instrument\_id} (\code{1}) angezeigt.
+  \item \code{LEFT JOIN instrument\_identifiers} -- damit auch
+        Equity-Serien ohne YAHOO-Identifier angezeigt würden (was
+        aktuell nicht vorkommt, aber defensiv ist).
+\end{itemize}
+
+\section{Tastatur-Handling}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Taste} & \textbf{Aktion} \\
+  \midrule
+  \code{$\uparrow$} / \code{k}  & Selection nach oben \\
+  \code{$\downarrow$} / \code{j} & Selection nach unten \\
+  \code{g} / \code{Home}  & Zum Anfang \\
+  \code{G} / \code{End}   & Zum Ende \\
+  \code{r}                & Re-Query (für Live-Refresh) \\
+  \code{q} / \code{Ctrl-C}  & Quit \\
+  \bottomrule
+\end{tabular}
+\caption{Tastatur-Bindings des TUI. Die \code{j}/\code{k}-Variante
+  ist Vim-style für Entwickler, die diese Tasten gewohnt sind.}
+\label{tab:tui-keys}
+\end{table}
+
+\begin{lstlisting}[language=typescript, caption={Keyboard-Handler},label=lst:tui-keys]
+useKeyboard((key) => {
+  if (key.name === "q" || (key.ctrl && key.name === "c")) {
+    renderer.destroy();
+    setTimeout(() => process.exit(0), 50);
+    return;
+  }
+  if (key.name === "r") {
+    setRefreshToken(t => t + 1);
+    return;
+  }
+  if (key.name === "up" || key.name === "k") {
+    setSelectedIndex(i => Math.max(0, i - 1));
+    return;
+  }
+  // ... etc.
+});
+\end{lstlisting}
+
+\section{Tests}
+
+Das TUI hat 27~Tests in 4~Dateien:
+
+\begin{itemize}
+  \item \code{src/data/queries.test.ts} (9~Tests) -- SQL-Strings,
+        Row-Mapping, Param-Übergabe.
+  \item \code{src/data/db.test.ts} (3~Tests) -- Public-API des
+        \code{db}-Moduls.
+  \item \code{src/types/format.test.ts} (8~Tests) -- Pure-Funktionen
+        (\code{fmtNumber}, \code{fmtPct}).
+  \item \code{tests/integration.test.ts} (7~Tests) -- Echtes
+        Postgres, 12~Series, OHLCV-Validierung.
+\end{itemize}
+
+\begin{lstlisting}[language=bash, caption={TUI-Tests laufen}]
+cd tui && bun test
+# 27 pass, 0 fail, 203 expect(), 4 files
+\end{lstlisting}
+
+\section{Was als Nächstes?}
+
+Die TUI ist die \emph{operative Oberfläche} des Projekts. Das
+nächste Kapitel zeigt, wie wir die Datenqualität \emph{testen} --
+nicht nur funktional (geht der Code?), sondern auch inhaltlich
+(stimmen die Daten?).

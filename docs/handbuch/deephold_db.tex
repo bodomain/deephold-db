@@ -1,0 +1,250 @@
+% =====================================================================
+% deephold_db — Handbuch
+% Vollständige Dokumentation des Projekts in Lehrbuchform
+% =====================================================================
+
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+% --- Sprache & Encoding ----------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{csquotes}
+
+% --- Layout & Typografie ---------------------------------------------
+\usepackage[a4paper,margin=2.5cm,headheight=14pt]{geometry}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- Schriften --------------------------------------------------------
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{inconsolata}
+
+% --- Grafik & Diagramme ----------------------------------------------
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc, trees}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% --- Tabellen ---------------------------------------------------------
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+
+% --- Math ---------------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% --- Code-Listings ----------------------------------------------------
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  stringstyle=\color{red!60!black},
+  commentstyle=\color{green!50!black}\itshape,
+  numberstyle=\tiny\color{gray},
+  numbers=left,
+  numbersep=8pt,
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{black!30},
+  xleftmargin=2em,
+  framexleftmargin=1.5em,
+  backgroundcolor=\color{black!3},
+  captionpos=b,
+}
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,y,n},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{green!50!black}\itshape,
+  stringstyle=\color{red!60!black},
+  morestring=[b]',
+  morestring=[b]",
+}
+\lstdefinelanguage{sql}{
+  keywords={SELECT,FROM,WHERE,JOIN,LEFT,INNER,OUTER,ON,AS,AND,OR,NOT,NULL,IS,IN,ORDER,BY,GROUP,HAVING,LIMIT,OFFSET,INSERT,INTO,VALUES,UPDATE,SET,DELETE,CREATE,TABLE,INDEX,UNIQUE,PRIMARY,KEY,FOREIGN,REFERENCES,DEFAULT,CHECK,CONSTRAINT,DROP,ALTER,ADD,COLUMN,UNION,ALL,INTERSECT,EXCEPT,CAST,AS,ASC,DESC,DISTINCT,BETWEEN,LIKE,ILIKE,SIMILAR,EXISTS,IN,ANY,SOME,CASE,WHEN,THEN,ELSE,END,COALESCE,NULLIF,GREATEST,LEAST,EXTRACT,DATE,PARTITION,OVER,ROW_NUMBER,RANK,DENSE_RANK,LAG,LEAD,FIRST_VALUE,LAST_VALUE,WITH,RECURSIVE},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  sensitive=false,
+  comment=[l]{--},
+  commentstyle=\color{green!50!black}\itshape,
+  stringstyle=\color{red!60!black},
+  morestring=[b]',
+  morestring=[b]",
+}
+\lstdefinelanguage{python}{
+  keywords={False,None,True,and,as,assert,async,await,break,class,continue,def,del,elif,else,except,finally,for,from,global,if,import,in,is,lambda,nonlocal,not,or,pass,raise,return,try,while,with,yield,match,case},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  sensitive=true,
+  comment=[l]{\#},
+  commentstyle=\color{green!50!black}\itshape,
+  stringstyle=\color{red!60!black},
+  morestring=[b]',
+  morestring=[b]",
+  morestring=[b]""",
+}
+\lstdefinelanguage{typescript}{
+  keywords={abstract,as,async,await,boolean,break,case,catch,class,const,continue,debugger,declare,default,delete,do,else,enum,export,extends,false,finally,for,from,function,get,if,implements,import,in,instanceof,interface,is,keyof,let,module,namespace,never,new,null,number,object,package,private,protected,public,readonly,return,set,static,string,super,switch,this,throw,true,try,type,typeof,undefined,unique,unknown,var,void,while,with,yield,from,of},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  sensitive=true,
+  comment=[l]{//},
+  commentstyle=\color{green!50!black}\itshape,
+  morecomment=[s]{/*}{*/},
+  stringstyle=\color{red!60!black},
+  morestring=[b]',
+  morestring=[b]",
+  morestring=[b]`,
+}
+
+% --- Querverweise & Hyperlinks ---------------------------------------
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+  pdftitle={deephold\_db -- Handbuch},
+  pdfauthor={deephold\_db contributors},
+}
+
+% --- Beispiele und Boxen ---------------------------------------------
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable, skins}
+
+\newtcolorbox{merke}{enhanced, breakable, colback=yellow!8!white, colframe=yellow!50!black,
+  fonttitle=\bfseries, title={Merke}}
+
+\newtcolorbox{definition}{enhanced, breakable, colback=blue!5!white, colframe=blue!50!black,
+  fonttitle=\bfseries, title={Definition}}
+
+\newtcolorbox{warnung}{enhanced, breakable, colback=red!5!white, colframe=red!60!black,
+  fonttitle=\bfseries, title={Achtung}}
+
+\newtcolorbox{beispiel}{enhanced, breakable, colback=green!5!white, colframe=green!40!black,
+  fonttitle=\bfseries, title={Beispiel}}
+
+% --- Kopf- und Fußzeilen ---------------------------------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\nouppercase{\leftmark}}
+\fancyhead[RO]{\nouppercase{\rightmark}}
+\fancyfoot[LE,RO]{\thepage}
+\renewcommand{\chaptermark}[1]{\markboth{Kapitel \thechapter\ -- #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+
+% --- Inhaltsverzeichnis-Stil ----------------------------------------
+\usepackage[titles]{tocloft}
+\renewcommand{\cftchapfont}{\large\bfseries}
+\renewcommand{\cftchappagefont}{\large}
+
+% --- Literaturverzeichnis -------------------------------------------
+\usepackage[backend=biber, style=alphabetic, sorting=ynt]{biblatex}
+\addbibresource{literatur.bib}
+
+% --- Index ------------------------------------------------------------
+\usepackage{imakeidx}
+\makeindex[intoc, columns=2, title=Index]
+
+% --- Theorem-Umgebungen (für Begriffsdefinitionen) ------------------
+\newtheorem{begriff}{Begriff}[chapter]
+
+% --- Eigene Befehle --------------------------------------------------
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\filetype}[1]{\texttt{#1}}
+\newcommand{\sql}[1]{\texttt{\small #1}}
+\newcommand{\shell}[1]{\texttt{\small #1}}
+\newcommand{\term}[1]{\textbf{\textit{#1}}}
+\newcommand{\foreign}[1]{\textit{#1}}
+
+% --- Titelseite -------------------------------------------------------
+\title{
+  \vspace{2cm}
+  {\Huge\bfseries deephold\_db}\\[0.5cm]
+  {\Large Ein Handbuch in Lehrbuchform}\\[0.5cm]
+  {\large Vom Datenmodell bis zur Walk-Forward-Replikation\\
+   einer quantitativen Forschungsarbeit}\\[2cm]
+}
+\author{deephold\_db contributors}
+\date{\today}
+
+\begin{document}
+
+% --- Vorspann --------------------------------------------------------
+\frontmatter
+\maketitle
+\thispagestyle{empty}
+
+\vspace*{4cm}
+\begin{center}
+  {\Huge\bfseries deephold\_db}\\[0.5cm]
+  {\Large Ein Handbuch in Lehrbuchform}\\[2cm]
+  {\large Vom Datenmodell bis zur Walk-Forward-Replikation\\
+  einer quantitativen Forschungsarbeit}\\[4cm]
+  {\small Stand: \today}\\[4cm]
+\end{center}
+
+\vspace*{\fill}
+\noindent\rule{\textwidth}{0.4pt}\\
+{\footnotesize
+Dieses Handbuch ist im Quellcode-Repository unter
+\texttt{docs/handbuch/} abgelegt. Es ist als Lehrmaterial gedacht
+und setzt Programmierkenntnisse voraus, aber keine
+Finanzmarktexpertise.\\[0.5em]
+Lizenz des Quellcodes: nicht-kommerziell, kein SLA (siehe \texttt{LICENSE} im Repo).
+}
+
+\cleardoublepage
+
+% --- Vorwort --------------------------------------------------------
+\input{chapters/00_vorwort.tex}
+
+% --- Inhaltsverzeichnis ----------------------------------------------
+\tableofcontents
+
+% --- Abbildungsverzeichnis (leer, da keine externen Bilder) ---------
+\listoffigures
+\addcontentsline{toc}{chapter}{\listfigurename}
+\thispagestyle{empty}
+\listoftables
+\addcontentsline{toc}{chapter}{\listtablename}
+\thispagestyle{empty}
+
+% --- Hauptteil -------------------------------------------------------
+\mainmatter
+
+\input{chapters/01_einfuehrung.tex}
+\input{chapters/02_grundlagen.tex}
+\input{chapters/03_infrastruktur.tex}
+\input{chapters/04_datenmodell.tex}
+\input{chapters/05_vendor_adapter.tex}
+\input{chapters/06_etl_pipeline.tex}
+\input{chapters/07_notebook.tex}
+\input{chapters/08_tui.tex}
+\input{chapters/09_tests.tex}
+\input{chapters/10_analytics_paper.tex}
+
+% --- Anhang ----------------------------------------------------------
+\appendix
+
+\input{appendix/a_glossar.tex}
+\input{appendix/b_befehle.tex}
+\input{appendix/c_schema.tex}
+\input{appendix/d_literatur.tex}
+
+% --- Index -----------------------------------------------------------
+\printindex
+
+% --- Literaturverzeichnis -------------------------------------------
+\printbibliography[heading=bibintoc]
+
+\end{document}

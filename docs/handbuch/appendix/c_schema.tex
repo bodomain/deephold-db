@@ -1,0 +1,174 @@
+% =====================================================================
+% Anhang C: Datenbank-Schema (DDL)
+% =====================================================================
+
+\chapter{Datenbank-Schema (DDL)}
+
+\label{app:schema}
+
+Dieser Anhang enthält das vollständige SQL-Schema, wie es von
+Alembic-Migration~0001 erzeugt wird.
+
+\section{Stammdaten}
+
+\begin{lstlisting}[language=sql, caption={Stammdaten-Tabellen},label=lst:ddl-stamm]
+CREATE TABLE venues (
+    venue_id   SERIAL PRIMARY KEY,
+    code       TEXT UNIQUE NOT NULL,
+    name       TEXT,
+    timezone   TEXT,
+    country    CHAR(2)
+);
+
+CREATE TABLE vendors (
+    vendor_id   SERIAL PRIMARY KEY,
+    code        TEXT UNIQUE,
+    license     TEXT,
+    homepage    TEXT
+);
+
+CREATE TABLE instruments (
+    instrument_id   BIGSERIAL PRIMARY KEY,
+    asset_class     TEXT NOT NULL,
+    name            TEXT NOT NULL,
+    currency        CHAR(3),
+    primary_venue   INTEGER REFERENCES venues(venue_id),
+    is_active       BOOLEAN DEFAULT TRUE,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE instrument_identifiers (
+    instrument_id  BIGINT REFERENCES instruments(instrument_id),
+    scheme         TEXT NOT NULL,
+    value          TEXT NOT NULL,
+    PRIMARY KEY (scheme, value)
+);
+CREATE INDEX ON instrument_identifiers(instrument_id);
+
+CREATE TABLE trading_calendars (
+    venue_id        INTEGER REFERENCES venues(venue_id),
+    date            DATE,
+    is_trading_day  BOOLEAN,
+    PRIMARY KEY (venue_id, date)
+);
+\end{lstlisting}
+
+\section{Preis-Tabellen}
+
+\begin{lstlisting}[language=sql, caption={Preis-Tabellen},label=lst:ddl-preise]
+CREATE TABLE prices_raw (
+    vendor_id      INTEGER REFERENCES vendors(vendor_id),
+    vendor_symbol  TEXT NOT NULL,
+    date           DATE NOT NULL,
+    payload        JSONB NOT NULL,
+    ingested_at    TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (vendor_id, vendor_symbol, date)
+);
+
+CREATE TABLE prices_daily (
+    instrument_id   BIGINT REFERENCES instruments(instrument_id),
+    date            DATE NOT NULL,
+    open            NUMERIC(18,8),
+    high            NUMERIC(18,8),
+    low             NUMERIC(18,8),
+    close           NUMERIC(18,8),
+    adjusted_close  NUMERIC(18,8),
+    volume          BIGINT,
+    vendor_id       INTEGER REFERENCES vendors(vendor_id),
+    PRIMARY KEY (instrument_id, date)
+);
+CREATE INDEX ix_prices_daily_date ON prices_daily(date);
+CREATE INDEX ix_prices_daily_instrument_id_date
+    ON prices_daily(instrument_id, date);
+\end{lstlisting}
+
+\section{Makro-, FX- und Bond-Tabellen}
+
+\begin{lstlisting}[language=sql, caption={Makro-, FX- und Bond-Tabellen},label=lst:ddl-makro]
+CREATE TABLE corporate_actions (
+    instrument_id  BIGINT REFERENCES instruments(instrument_id),
+    ex_date        DATE,
+    action_type    TEXT,
+    value          NUMERIC(18,8),
+    PRIMARY KEY (instrument_id, ex_date, action_type)
+);
+
+CREATE TABLE fx_rates_daily (
+    ccy_from  CHAR(3),
+    ccy_to    CHAR(3),
+    date      DATE,
+    rate      NUMERIC(18,8),
+    vendor_id INTEGER REFERENCES vendors(vendor_id),
+    PRIMARY KEY (ccy_from, ccy_to, date)
+);
+
+CREATE TABLE bond_yields (
+    instrument_id  BIGINT REFERENCES instruments(instrument_id),
+    date           DATE,
+    yield          NUMERIC(10,6),
+    price          NUMERIC(10,6),
+    duration       NUMERIC(10,4),
+    rating         TEXT,
+    PRIMARY KEY (instrument_id, date)
+);
+
+CREATE TABLE macro_series (
+    series_id  TEXT PRIMARY KEY,
+    name       TEXT,
+    source     TEXT,
+    frequency  TEXT,
+    unit       TEXT
+);
+
+CREATE TABLE macro_observations (
+    series_id  TEXT REFERENCES macro_series(series_id),
+    date       DATE,
+    value      NUMERIC(18,6),
+    PRIMARY KEY (series_id, date)
+);
+\end{lstlisting}
+
+\section{DQ-Tabellen}
+
+\begin{lstlisting}[language=sql, caption={DQ-Tabellen},label=lst:ddl-dq]
+CREATE TABLE dq_runs (
+    run_id    BIGSERIAL PRIMARY KEY,
+    run_at    TIMESTAMPTZ DEFAULT now(),
+    pipeline  TEXT,
+    status    TEXT
+);
+
+CREATE TABLE dq_findings (
+    run_id         BIGINT REFERENCES dq_runs(run_id),
+    check_name     TEXT,
+    severity       TEXT,
+    affected_rows  INTEGER,
+    details        JSONB,
+    PRIMARY KEY (run_id, check_name)
+);
+\end{lstlisting}
+
+\section{Indizes im Überblick}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Tabelle} & \textbf{Index} & \textbf{Spalte(n)} \\
+  \midrule
+  \code{instruments}            & PK            & \code{instrument\_id} \\
+  \code{venues}                  & UQ + PK       & \code{code} / \code{venue\_id} \\
+  \code{vendors}                & UQ + PK       & \code{code} / \code{vendor\_id} \\
+  \code{instrument\_identifiers}& PK            & (\code{scheme}, \code{value}) \\
+                                  & \code{ix\_instrument\_identifiers} & \code{instrument\_id} \\
+  \code{prices\_daily}          & PK            & (\code{instrument\_id}, \code{date}) \\
+                                  & \code{ix\_prices\_daily\_date}        & \code{date} \\
+                                  & \code{ix\_prices\_daily\_inst\_date}   & (\code{instrument\_id}, \code{date}) \\
+  \code{macro\_observations}    & PK            & (\code{series\_id}, \code{date}) \\
+  \code{dq\_findings}            & PK            & (\code{run\_id}, \code{check\_name}) \\
+  \bottomrule
+\end{tabular}
+\caption{Alle Indizes des Schemas. \code{PK} = Primärschlüssel,
+  \code{UQ} = Unique-Constraint.}
+\end{table}

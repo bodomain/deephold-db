@@ -33,7 +33,7 @@ Asset Allocation, Risikomodellierung, Makroanalyse und Machine Learning.
 ## Repository-Layout
 
 ```
-finance_data/
+deephold_db/
 ├── docker-compose.yml
 ├── pyproject.toml
 ├── poetry.lock
@@ -46,7 +46,7 @@ finance_data/
 │   ├── tickers.yaml
 │   ├── vendors.yaml
 │   └── series_registry.yaml
-├── src/finance_data/
+├── src/deephold_db/
 │   ├── __init__.py
 │   ├── db/
 │   ├── vendors/
@@ -237,7 +237,7 @@ CREATE TABLE dq_findings (
 
 ## ETL-Pipeline
 
-- Jeder Vendor = eigener Adapter in `src/finance_data/vendors/<vendor>.py`
+- Jeder Vendor = eigener Adapter in `src/deephold_db/vendors/<vendor>.py`
   mit Interface:
   ```python
   def fetch(symbol: str, start: date, end: date) -> pl.DataFrame: ...

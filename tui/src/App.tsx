@@ -135,7 +135,7 @@ function Header({
     >
       <text>
         <span fg="#bb9af7" attributes={1}>
-          finance_data
+          deephold_db
         </span>
         <span fg="#565f89">  —  TUI Explorer  </span>
         <span fg="#7dcfff">

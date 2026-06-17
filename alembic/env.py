@@ -18,14 +18,14 @@ if config.config_file_name is not None:
 # Prefer explicit env (Makefile / CI), fall back to pydantic-settings.
 db_url = os.environ.get("DATABASE_URL")
 if not db_url:
-    from finance_data.utils.config import get_settings  # noqa: E402
+    from deephold_db.utils.config import get_settings
 
     db_url = get_settings().database_url
 config.set_main_option("sqlalchemy.url", db_url)
 
 # Import models so their tables register on Base.metadata.
-from finance_data.db.base import Base  # noqa: E402
-from finance_data.db import models  # noqa: E402,F401
+from deephold_db.db import models  # noqa: E402,F401
+from deephold_db.db.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 

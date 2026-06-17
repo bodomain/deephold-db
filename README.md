@@ -1,4 +1,4 @@
-# finance_data
+# deephold_db
 
 Retail-/Research-Finanzmarktdatenbank. Tägliche Frequenz, mehrere Asset-Klassen,
 mehrere Vendor-Quellen. Ziel: quantitative Analysen, Portfolio-Management,
@@ -14,7 +14,7 @@ Asset Allocation, Risikomodellierung, Makroanalyse, ML-Features.
 
 Diese Iteration läuft end-to-end:
 
-- **PostgreSQL 16** läuft via `docker compose up -d` (Container `finance_pg`).
+- **PostgreSQL 16** läuft via `docker compose up -d` (Container `deephold_pg`).
 - **Alembic** hat die initiale Migration `0001_initial` angewendet → **14 Tabellen**
   + `alembic_version` in der DB.
 - **SQLAlchemy-ORM** roundtrip funktioniert (Vendor, MacroSeries, MacroObservation,
@@ -117,7 +117,7 @@ Beispiel-Output (gekürzt):
 
 ```
 ================================================================================
-finance_data — Time Series Query
+deephold_db — Time Series Query
 ================================================================================
 
 | Series        | Name                                     | Count | First      | Last       | Latest | Δ %    | Mean    | Min     | Max     |
@@ -186,7 +186,7 @@ für plotly.js via CDN).
 ## Verzeichnisstruktur
 
 ```
-finance_data/
+deephold_db/
 ├── AGENTS.md                # LLM-Agenten-Prompt
 ├── docker-compose.yml       # postgres + adminer + prefect
 ├── pyproject.toml           # deps + ruff/mypy/pytest config
@@ -194,7 +194,7 @@ finance_data/
 ├── alembic.ini
 ├── alembic/                 # Migrationen
 ├── config/                  # tickers.yaml, vendors.yaml, series_registry.yaml
-├── src/finance_data/
+├── src/deephold_db/
 │   ├── db/                  # Base, session, models
 │   ├── vendors/             # Vendor-Base, FRED
 │   ├── pipelines/           # Prefect-Flows (TODO)
@@ -205,8 +205,56 @@ finance_data/
 ├── tui/                     # OpenTUI-Explorer (Bun + React 19)
 ├── notebooks/               # Jupyter-Notebooks (01_macro_overview.ipynb)
 ├── sql/                     # manuelle Queries / Views
-└── docs/                    # data_dictionary, sources, methodology
+└── docs/
+    ├── data_dictionary.md
+    ├── sources.md
+    ├── methodology.md
+    └── handbuch/            # LaTeX-Lehrbuch → deephold_db.pdf (102 Seiten)
 ```
+
+## Handbuch (`docs/handbuch/`)
+
+Das Projekt enthält ein deutschsprachiges LaTeX-Lehrbuch mit 11 Kapiteln
+und 4 Anhängen (102 Seiten, ~670 KB). Es erklärt Datenmodell, ETL,
+TUI, Tests und die AEGIS-Paper-Replikation.
+
+```bash
+# PDF bauen (3 pdflatex-Passes + biber, ~30s)
+make handbuch
+
+# Fehlende TeX-Live-Pakete installieren (einmalig)
+make handbuch-install-deps
+
+# Auxiliary-Files aufräumen
+make handbuch-clean
+```
+
+Voraussetzung: TeX Live (`pdflatex`, `biber`). Die benötigten
+Pakete sind `csquotes`, `babel-german`, `listings`, `tcolorbox`, `pgf`,
+`pgfplots`, `biblatex`, `microtype`, `lmodern`, `inconsolata`,
+`fancyhdr`, `hyperref`, `tocloft`, `booktabs`, `imakeidx`, `xcolor`,
+`upquote`, `xkeyval`, `multirow`, `comment`, `geometry`, `setspace`,
+`parskip`, `amsmath`, `amssymb`.
+
+Kapitelübersicht:
+
+| Kapitel | Inhalt |
+| --- | --- |
+| 0  | Vorwort, Scope, was `deephold_db` **nicht** ist |
+| 1  | Einführung: Motivation, Asset-Klassen, Quellen-Stack |
+| 2  | Grundlagen: PIT-Look-Ahead, OHLCV, Corporate Actions, VAM |
+| 3  | Infrastruktur: Docker, Postgres, `.env`, Makefile |
+| 4  | Datenmodell: ER-Diagramm, 14 Tabellen, Trade-offs |
+| 5  | Vendor-Adapter: FRED, ECB, Yahoo, Stooq |
+| 6  | ETL-Pipeline: extract → validate → transform → upsert |
+| 7  | Notebook: Plotly-Grid, Makro-Overview |
+| 8  | TUI: OpenTUI, React 19, `pg`-Client, 2-Pane-Layout |
+| 9  | Tests: pytest, bun test, Pandera-Schemas |
+| 10 | Analytics & Paper: VAM-Lite, CAGR/Sharpe, AEGIS-Vergleich |
+| A  | Glossar |
+| B  | Makefile-Befehle |
+| C  | Vollständiges DDL-Schema |
+| D  | Literatur (34 Quellen) |
 
 ## Vendor- und Lizenzhinweise
 

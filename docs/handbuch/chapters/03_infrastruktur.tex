@@ -1,0 +1,351 @@
+% =====================================================================
+% Kapitel 3: Infrastruktur
+% =====================================================================
+
+\chapter{Infrastruktur}
+
+\label{ch:infrastruktur}
+
+Dieses Kapitel zeigt, wie alle Komponenten -- Datenbank, Python,
+TypeScript, Tools -- auf einer Maschine zusammenstarten und
+miteinander kommunizieren. Es ist die Grundlage, auf der alle
+folgenden Kapitel aufbauen.
+
+\section{Überblick: Was läuft wo?}
+
+Abbildung~\ref{fig:infra-overview} zeigt, welche Prozesse auf der
+Entwicklungsmaschine laufen und wie sie miteinander sprechen.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=1cm and 1.5cm,
+  box/.style={rectangle, draw, thick, rounded corners, minimum width=3cm, minimum height=1cm, align=center, font=\small},
+  container/.style={rectangle, draw, very thick, dashed, rounded corners, inner sep=0.4cm},
+  arrow/.style={-Latex, thick},
+  dasharrow/.style={-Latex, thick, dashed},
+]
+  \node[container, label={\textbf{deephold\_db -- Entwicklungsmaschine}}] (host) {
+    \begin{tikzpicture}[node distance=0.6cm]
+      \node[box, fill=blue!20] (py) {Python venv\\\scriptsize deephold\_db package};
+      \node[box, fill=green!20, right=of py] (pg) {PostgreSQL 16\\\scriptsize in Docker};
+      \node[box, fill=yellow!20, right=of pg] (bun) {Bun\\\scriptsize deephold-db-tui};
+      \node[box, fill=cyan!20, below=of pg] (admin) {Adminer\\\scriptsize Port 8080};
+      \node[box, fill=orange!20, right=of admin] (prefect) {Prefect Server\\\scriptsize Port 4200};
+    \end{tikzpicture}
+  };
+
+  \draw[arrow] (py) -- node[above, font=\scriptsize] {psycopg / SQLAlchemy} (pg);
+  \draw[arrow] (bun) -- node[above, font=\scriptsize] {node-postgres} (pg);
+  \draw[arrow] (pg) -- (admin);
+  \draw[arrow] (pg) -- (prefect);
+\end{tikzpicture}
+\caption{Lokale Infrastruktur: Vier Prozesse, eine Datenbank. Alles
+  läuft auf einer Maschine. PostgreSQL ist der zentrale Hub; Python
+  und Bun kommunizieren nicht direkt, sondern nur über die DB.}
+\label{fig:infra-overview}
+\end{figure}
+
+\begin{definition}
+\textbf{localhost / 127.0.0.1}
+\emph{Localhost} ist der Rechnername, der immer auf den
+\emph{aktuellen Rechner} selbst verweist. Die IP-Adresse~127.0.0.1
+ist die \emph{Loopback}-Adresse. Wenn ein Prozess auf Localhost hört,
+ist er nur für Prozesse auf derselben Maschine erreichbar -- nicht
+für andere Computer im Netz. Dies ist die sicherste
+\emph{Standardtopologie} für Entwicklung.
+\end{definition}
+
+\section{Docker und Docker Compose}
+
+\begin{definition}
+\textbf{docker-compose.yml}
+Die Datei \code{docker-compose.yml} ist die
+\emph{Single Source of Truth} für alle containerisierten Services.
+Sie listet jeden Service mit Image, Umgebungsvariablen, Ports,
+Volumes und Healthcheck auf.
+\end{definition}
+
+\begin{lstlisting}[language=yaml, caption={Vollständige \code{docker-compose.yml}},label=lst:dockercompose]
+name: deephold-db
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: deephold_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-deephold}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deephold}
+      POSTGRES_DB: ${POSTGRES_DB:-deephold}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deephold} -d ${POSTGRES_DB:-deephold}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:4
+    container_name: deephold_adminer
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prefect-server:
+    image: prefecthq/prefect:2.16-python3.11
+    container_name: deephold_prefect
+    restart: unless-stopped
+    command: prefect server start --host 0.0.0.0
+    ports:
+      - "${PREFECT_PORT:-4200}:4200"
+    environment:
+      PREFECT_HOME: /opt/prefect
+      PREFECT_SERVER_API_URL: http://localhost:4200/api
+    volumes:
+      - prefect_data:/opt/prefect
+
+volumes:
+  postgres_data:
+  prefect_data:
+\end{lstlisting}
+
+Listing~\ref{lst:dockercompose} zeigt die vollständige
+\code{docker-compose.yml}. Bemerkenswert:
+
+\begin{itemize}
+  \item \textbf{Drei Services}: \code{postgres} (Datenbank),
+        \code{adminer} (Web-UI für SQL), \code{prefect-server}
+        (Workflow-Orchestrierung).
+  \item \textbf{Zwei Volumes}: \code{postgres\_data} und
+        \code{prefect\_data} für persistente Daten.
+  \item \textbf{Healthcheck} auf Postgres -- der \code{adminer}-Service
+        startet erst, wenn Postgres bereit ist (\code{condition:
+        service\_healthy}).
+  \item \textbf{Umgebungsvariablen} mit Defaults:
+        \code{\$\{POSTGRES\_USER:-deephold\}} -- falls die Variable
+        nicht gesetzt ist, wird der Default \code{deephold} verwendet.
+  \item \textbf{Image-Tags}: \code{postgres:16-alpine} -- die
+        \code{-alpine}-Variante nutzt eine minimale Linux-Distribution
+        (Alpine) und ist entsprechend klein.
+\end{itemize}
+
+\section{Das Makefile}
+
+Das Makefile ist die \emph{einzige CLI}, die man kennen muss. Es
+abstrahiert über alle Details -- Docker, Python, Bun, Alembic,
+Tests.
+
+\begin{lstlisting}[language=make, caption={Vollständiges Makefile},label=lst:makefile]
+.PHONY: help
+help:  ## Zeige alle Targets
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	  awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: init
+init:  ## Komplett-Setup: deps + Stack + Migrations
+	poetry install
+	$(COMPOSE) up -d
+	@echo "Warte auf Postgres ..."
+	@for i in $$(seq 1 30); do \
+	  $(COMPOSE) exec -T postgres pg_isready -U $${POSTGRES_USER:-deephold} >/dev/null 2>&1 && break; \
+	  sleep 1; \
+	done
+	$(MAKE) migrate
+	@echo "Init fertig. UI: Adminer :8080, Prefect :4200"
+
+.PHONY: up
+up:  ## docker-compose Stack starten
+	$(COMPOSE) up -d
+
+.PHONY: down
+down:  ## docker-compose Stack stoppen
+	$(COMPOSE) down
+
+.PHONY: migrate
+migrate:  ## Alembic-Migrationen anwenden
+	DATABASE_URL=$(DB_DSN) $(PYTHON) -m alembic upgrade head
+
+.PHONY: revision
+revision:  ## Neue Alembic-Revision (Usage: make revision m="...")
+	DATABASE_URL=$(DB_DSN) $(PYTHON) -m alembic revision --autogenerate -m "$(m)"
+
+.PHONY: test
+test:  ## pytest + pandera schemas
+	DATABASE_URL=$(DB_DSN) $(PYTHON) -m pytest
+
+.PHONY: tui
+tui:  ## OpenTUI-Explorer starten (Bun erforderlich)
+	@if ! command -v bun >/dev/null 2>&1; then \
+		echo "Bun nicht installiert. Install: curl -fsSL https://bun.sh/install | bash"; \
+		exit 1; \
+	fi
+	cd tui && bun install --silent && bun run start
+
+.PHONY: tui-test
+tui-test:  ## TUI-Tests (Unit + Integration)
+	@if ! command -v bun >/dev/null 2>&1; then \
+		echo "Bun nicht installiert. Install: curl -fsSL https://bun.sh/install | bash"; \
+		exit 1; \
+	fi
+	cd tui && bun test
+
+.PHONY: format
+format:  ## ruff format
+	$(PYTHON) -m ruff format .
+
+.PHONY: lint
+lint:  ## ruff check
+	$(PYTHON) -m ruff check .
+
+.PHONY: typecheck
+typecheck:  ## mypy
+	$(PYTHON) -m mypy src/
+
+.PHONY: check
+check:  ## Alles: lint + typecheck + test
+	$(PYTHON) -m ruff check .
+	$(PYTHON) -m ruff format --check .
+	$(PYTHON) -m mypy src/
+	$(PYTHON) -m pytest
+\end{lstlisting}
+
+Listing~\ref{lst:makefile} zeigt die wichtigsten Targets. Die
+Konvention ist: \code{make <target>} -- und das Makefile sucht
+sich die richtigen Befehle zusammen.
+
+\section{Python-Environment}
+
+\begin{definition}
+\textbf{venv (Virtual Environment)}
+Ein \emph{virtuelles Python-Environment} ist ein isoliertes
+Verzeichnis, in dem Python-Pakete installiert werden, ohne das
+System-Python zu beeinflussen. In diesem Projekt wird statt
+Poetry (das viele zusätzliche Komplexität mitbringt) direkt
+\code{python -m venv .venv} und \code{pip install} verwendet -- so
+funktioniert das Setup auf jeder Maschine ohne spezielle Tools.
+\end{definition}
+
+\begin{beispiel}
+\textbf{Setup-Sequenz}
+\begin{lstlisting}[language=shell]
+# 1. Virtuelles Environment anlegen
+python3 -m venv .venv
+
+# 2. pip aktualisieren
+.venv/bin/pip install --quiet --upgrade pip
+
+# 3. Projekt installieren (inkl. dev-deps)
+.venv/bin/pip install --quiet -e .
+
+# 4. Tests laufen lassen
+.venv/bin/pytest
+\end{lstlisting}
+\end{beispiel}
+
+Die wichtigsten Python-Pakete sind in
+Tabelle~\ref{tab:py-deps} zusammengefasst.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Paket} & \textbf{Version} & \textbf{Zweck} \\
+  \midrule
+  \code{polars}    & $\geq$0.20 & Datenverarbeitung (schneller als Pandas) \\
+  \code{pandas}    & $\geq$2.2  & Datenverarbeitung (Kompatibilität) \\
+  \code{numpy}     & $\geq$1.26 & Numerik \\
+  \code{sqlalchemy} & $\geq$2.0  & ORM \\
+  \code{alembic}   & $\geq$1.13 & Schema-Migrationen \\
+  \code{psycopg[binary]} & $\geq$3.1 & PostgreSQL-Treiber \\
+  \code{httpx}      & $\geq$0.27 & HTTP-Client (Vendor-Adapter) \\
+  \code{tenacity}   & $\geq$8.2  & Retries \\
+  \code{structlog}  & $\geq$24.1 & Logging \\
+  \code{pydantic}   & $\geq$2.6  & Datenmodelle \\
+  \code{pydantic-settings} & $\geq$2.2 & Config aus .env \\
+  \code{prefect}    & $\geq$2.16 & Workflow-Orchestrierung \\
+  \code{tabulate}   & $\geq$0.9  & Formatierte Tabellen im Terminal \\
+  \midrule
+  \code{pytest}     & $\geq$8.0  & Test-Runner \\
+  \code{ruff}       & $\geq$0.3  & Linter + Formatter \\
+  \code{mypy}       & $\geq$1.8  & Type-Checker \\
+  \bottomrule
+\end{tabular}
+\caption{Wichtigste Python-Abhängigkeiten}
+\label{tab:py-deps}
+\end{table}
+
+\section{Bun und TypeScript}
+
+Bun ist die bevorzugte Runtime für das TUI (Kapitel~\ref{ch:tui}).
+Es vereint Paketmanager, Test-Runner und Bundler in einem einzigen,
+sehr schnellen Binary.
+
+\begin{lstlisting}[language=shell, caption={Bun-Setup}]
+# Installation (einmalig pro Maschine)
+curl -fsSL https://bun.sh/install | bash
+source ~/.bashrc
+
+# Im tui/-Verzeichnis
+cd tui
+bun install                  # Installiert Dependencies
+bun run start                # Startet TUI
+bun test                     # Lässt alle Tests laufen
+bun run typecheck            # tsc --noEmit
+\end{lstlisting}
+
+\section{Pfade, Ports, Datenverzeichnisse}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Was} & \textbf{Pfad / Port} & \textbf{Wer greift zu} \\
+  \midrule
+  Postgres-Server         & \code{localhost:5432}    & Python, Bun, Adminer, psql \\
+  Adminer-Web-UI          & \code{localhost:8080}    & Browser \\
+  Prefect-Server-UI       & \code{localhost:4200}    & Browser \\
+  PostgreSQL-Daten-Volume & \code{postgres\_data}    & Docker (persistent) \\
+  Prefect-Daten-Volume    & \code{prefect\_data}     & Docker (persistent) \\
+  Python-Pakete           & \code{./.venv/}          & \code{./.venv/bin/python} \\
+  Bun-Cache               & \code{$\sim$/.bun/}      & Bun \\
+  TUI-Node-Modules        & \code{./tui/node\_modules/} & Bun \\
+  Jupyter-Notebook-Output & \code{./notebooks/}      & Browser (HTML) \\
+  \bottomrule
+\end{tabular}
+\caption{Pfade und Ports aller Komponenten}
+\label{tab:paths-ports}
+\end{table}
+
+\section{Was beim ersten Start passiert}
+
+\begin{example}[Boot-Sequenz]
+\begin{enumerate}
+  \item \code{make up} startet die Docker-Container.
+  \item Postgres initialisiert sich (5--10 Sekunden) und ist bereit
+        für Verbindungen (\code{pg\_isready} gibt Exit-Code 0).
+  \item Adminer wartet auf \code{postgres: service\_healthy},
+        startet dann.
+  \item Prefect-Server startet (langsamer, 10--20 Sekunden).
+  \item \code{make migrate} führt alle Alembic-Migrationen aus und
+        erzeugt die 14~Tabellen.
+  \item \code{make ingest-<asset\_class>} oder \code{pytest} oder
+        \code{make tui} können jetzt starten.
+\end{enumerate}
+\end{example}
+
+\section{Was als Nächstes?}
+
+Mit der Infrastruktur im Griff wenden wir uns dem nächsten
+zentralen Thema zu: dem \emph{Datenmodell}. Kapitel~\ref{ch:datenmodell}
+erklärt die 14~Tabellen, ihre Beziehungen und ihre Indizes.

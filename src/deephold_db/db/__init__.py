@@ -1,7 +1,7 @@
 """SQLAlchemy ORM models und DB-Utilities."""
 
-from finance_data.db.base import Base
-from finance_data.db.models import (
+from deephold_db.db.base import Base
+from deephold_db.db.models import (
     BondYield,
     CorporateAction,
     DqFinding,
@@ -17,7 +17,7 @@ from finance_data.db.models import (
     Vendor,
     Venue,
 )
-from finance_data.db.session import get_engine, get_sessionmaker, session_scope
+from deephold_db.db.session import get_engine, get_sessionmaker, session_scope
 
 __all__ = [
     "Base",

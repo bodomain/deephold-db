@@ -15,13 +15,14 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    String,
     Text,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from finance_data.db.base import Base
+from deephold_db.db.base import Base
 
 # ---------------------------------------------------------------------------
 # Stammdaten
@@ -133,8 +134,8 @@ class CorporateAction(Base):
 class FxRateDaily(Base):
     __tablename__ = "fx_rates_daily"
 
-    ccy_from: Mapped[str] = mapped_column(CHAR(3), primary_key=True)
-    ccy_to: Mapped[str] = mapped_column(CHAR(3), primary_key=True)
+    ccy_from: Mapped[str] = mapped_column(String(7), primary_key=True)
+    ccy_to: Mapped[str] = mapped_column(String(7), primary_key=True)
     date: Mapped[date] = mapped_column(Date, primary_key=True)
     rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
     vendor_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("vendors.vendor_id"))
@@ -175,7 +176,7 @@ class MacroObservation(Base):
         Text, ForeignKey("macro_series.series_id"), primary_key=True
     )
     date: Mapped[date] = mapped_column(Date, primary_key=True)
-    value: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    value: Mapped[Decimal | None] = mapped_column(Numeric(24, 6))
 
 
 # ---------------------------------------------------------------------------

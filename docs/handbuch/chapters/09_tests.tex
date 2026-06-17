@@ -1,0 +1,263 @@
+% =====================================================================
+% Kapitel 9: Tests
+% =====================================================================
+
+\chapter{Tests}
+
+\label{ch:tests}
+
+Tests sind das Sicherheitsnetz des Projekts. Sie prüfen, ob der
+Code das tut, was er tun soll -- und verhindern, dass spätere
+Änderungen bestehende Funktionalität brechen.
+
+\section{Test-Philosophie}
+
+\begin{merke}
+Das Projekt folgt der \emph{Pyramide} der Tests:
+
+\begin{itemize}
+  \item \textbf{Viele} schnelle \emph{Unit-Tests} (einzelne Funktionen).
+  \item \textbf{Wenige} \emph{Integration-Tests} (mehrere
+        Komponenten zusammen).
+  \item \textbf{Manuelle} \emph{Checks} für Dinge, die schwer zu
+        automatisieren sind (visuelle TUI-Korrektheit).
+\end{itemize}
+\end{merke}
+
+\section{Python-Tests mit pytest}
+
+\subsection{Überblick}
+
+\begin{lstlisting}[language=bash, caption={Python-Tests laufen}]
+.venv/bin/pytest
+# 55 passed
+\end{lstlisting}
+
+55~Tests sind in der Suite (Stand: Handbuch-Erstellung). Sie sind
+in folgende Module aufgeteilt:
+
+\begin{itemize}
+  \item \code{tests/test\_config.py} -- Konfigurationsladen.
+  \item \code{tests/test\_models.py} -- SQLAlchemy-ORM-Registrierung.
+  \item \code{tests/test\_fred.py} -- FRED-Vendor (mit gemocktem
+        HTTP).
+  \item \code{tests/test\_ecb.py} -- ECB-Vendor (mit gemocktem HTTP).
+  \item \code{tests/test\_yahoo.py} -- Yahoo-Vendor (mit
+        gemocktem yfinance).
+  \item \code{tests/analytics/test\_metrics.py} -- Returns + Metriken.
+\end{itemize}
+
+\subsection{Test-Fixtures}
+
+\begin{definition}
+\textbf{pytest Fixture}
+Eine \emph{Fixture} ist eine wiederverwendbare Test-Setup-Funktion.
+Sie wird mit \code{@pytest.fixture} dekoriert und kann in Tests
+\emph{injiziert} werden, indem sie als Argument mit dem gleichen
+Namen wie die Fixture-Funktion deklariert wird.
+\end{definition}
+
+\begin{lstlisting}[language=python, caption={pytest-Fixture für Settings-Cache-Reset},label=lst:fixture]
+@pytest.fixture(autouse=True)
+def _reset_settings_cache():
+    """Reset the pydantic-settings lru_cache around each test."""
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+\end{lstlisting}
+
+Diese \code{autouse=True}-Fixture wird \emph{vor jedem Test}
+automatisch ausgeführt und stellt sicher, dass der
+\code{lru\_cache} der \code{get\_settings()}-Funktion geleert
+ist -- sonst würden Test-Pollution und unstabile Ergebnisse
+entstehen.
+
+\subsection{Mocking}
+
+\begin{definition}
+\textbf{Mock}
+Ein \emph{Mock} ist ein gefälschtes Objekt, das das Verhalten eines
+realen Objekts nachahmt. In Tests verwenden wir Mocks, um externe
+Abhängigkeiten (HTTP-Server, Datenbanken) zu simulieren, ohne
+\emph{tatsächlich} mit ihnen zu sprechen -- das macht Tests
+\emph{ schnell}, \emph{ deterministisch } und \emph{ offline
+  lauffähig}.
+\end{definition}
+
+Listing~\ref{lst:mock-fred} zeigt einen typischen Mock-Test für
+den FRED-Vendor.
+
+\begin{lstlisting}[language=python, caption={FRED-Vendor mit gemocktem HTTP},label=lst:mock-fred]
+def test_fred_fetch_parses_response(fake_fred_observations, monkeypatch):
+    monkeypatch.setenv("FRED_API_KEY", "test-key")
+    v = FredVendor()
+    v._get = MagicMock(return_value=fake_fred_observations)
+    df = v.fetch("DGS3MO", date(2024, 6, 1), date(2024, 6, 30))
+    assert df.height == 3
+    assert df["value"][0] == pytest.approx(5.02)
+    v._get.assert_called_once()
+\end{lstlisting}
+
+Die Strategie: \code{v.\_get} wird durch einen \code{MagicMock}
+ersetzt, der \emph{jeden} Aufruf mit dem vorbereiteten Fake-Response
+beantwortet. So können wir die \emph{Response-Parsing}-Logik
+isoliert testen, ohne einen echten HTTP-Server zu kontaktieren.
+
+\section{TypeScript-Tests mit bun test}
+
+\subsection{Überblick}
+
+\begin{lstlisting}[language=bash, caption={TUI-Tests laufen}]
+cd tui && bun test
+# 27 pass, 0 fail
+\end{lstlisting}
+
+\subsection{Mocking in bun test}
+
+Bun's Test-Runner hat eine Jest-kompatible API:
+\code{describe}, \code{test}, \code{expect}, \code{spyOn}, \code{mock}.
+
+\begin{lstlisting}[language=typescript, caption={Mocking der pg-Layer im TUI},label=lst:bun-mock]
+import { describe, it, expect, spyOn, type Mock } from "bun:test";
+import * as dbModule from "./db";
+import { listSeries } from "./queries";
+
+let spies: Mock<typeof dbModule.query>[] = [];
+
+function mockQuery<T>(rows: T[]): Mock<typeof dbModule.query> {
+  const spy = spyOn(dbModule, "query") as Mock<typeof dbModule.query>;
+  spy.mockReset();
+  spy.mockResolvedValue(rows as never);
+  spies.push(spy);
+  return spy;
+}
+
+afterEach(() => {
+  for (const s of spies) s.mockRestore();
+  spies = [];
+});
+
+describe("listSeries", () => {
+  it("calls query() and returns the rows", async () => {
+    const rows: SeriesRow[] = [{...}];
+    const spy = mockQuery(rows);
+    const out = await listSeries();
+    expect(out).toEqual(rows);
+    expect(spy).toHaveBeenCalledTimes(1);
+    const sql = spy.mock.calls[0]?.[0] as string;
+    expect(sql).toContain("UNION ALL");
+  });
+});
+\end{lstlisting}
+
+Wichtige Pattern:
+
+\begin{itemize}
+  \item \code{spyOn} ersetzt eine Methode durch einen Spy, der
+        Aufrufe aufzeichnet.
+  \item \code{mockResolvedValue} setzt den Rückgabewert.
+  \item \code{afterEach} restauriert die Spies, um Test-Pollution zu
+        vermeiden.
+\end{itemize}
+
+\subsection{Integration-Tests}
+
+\begin{lstlisting}[language=typescript, caption={Integration-Test mit echtem Postgres}]
+beforeAll(async () => {
+  try {
+    await query("SELECT 1::int AS x");
+    dbReachable = true;
+  } catch (e) {
+    console.warn("Postgres unreachable, tests will no-op.");
+  }
+});
+
+function guarded(name, fn) {
+  return async () => {
+    if (!dbReachable) {
+      console.warn(`skip ${name}: DB unreachable`);
+      return;
+    }
+    await fn();
+  };
+}
+
+it("equity rows carry the YAHOO ticker (AAPL/MSFT/^GSPC)",
+   guarded("equity-tickers", async () => {
+     const rows = await listSeries();
+     const tickers = rows
+       .filter(r => r.kind === "equity")
+       .map(r => r.id)
+       .sort();
+     expect(tickers).toEqual(["AAPL", "MSFT", "^GSPC"]);
+   }));
+\end{lstlisting}
+
+Integration-Tests prüfen das Verhalten gegen die echte
+PostgreSQL-DB. Sie sind \emph{no-op} (nicht \emph{fail}), wenn
+die DB nicht erreichbar ist -- so bleibt die CI grün, auch wenn
+Postgres temporär down ist.
+
+\section{Manuelle Test-Checklist}
+
+Manche Dinge sind schwer zu automatisieren -- visuelle Korrektheit
+einer TUI, Tastatur-Feel, Verhalten unter ungewöhnlichen
+Bedingungen. Dafür gibt es die manuelle Checkliste in
+\code{tui/README.md}.
+
+\begin{beispiel}
+\textbf{Auszug aus der manuellen TUI-Checklist}
+  \begin{enumerate}
+    \item \code{make tui} starten
+    \item Header zeigt "12 series" (nicht "loading...")
+    \item Erste Zeile (\code{AAPL}) ist selektiert ($\triangleright$)
+    \item \code{$\downarrow$} 4x drücken: Selection wandert
+    \item \code{r} drücken: Series-Liste wird neu geladen
+    \item \code{q} drücken: TUI beendet sauber
+  \end{enumerate}
+\end{beispiel}
+
+\section{Code-Qualität}
+
+\begin{definition}
+\textbf{Linter}
+Ein \emph{Linter} ist ein statisches Code-Analyse-Tool, das nach
+\emph{Potentiellen Fehlern}, \emph{Stil-Verstößen} und
+\emph{Sicherheitsproblemen} sucht, ohne den Code auszuführen.
+\end{definition}
+
+Dieses Projekt verwendet:
+
+\begin{itemize}
+  \item \textbf{ruff} -- ein extrem schneller Python-Linter
+        (in Rust geschrieben). Ersetzt \code{flake8}, \code{isort},
+        \code{black} und Teile von \code{pylint}.
+  \item \textbf{tsc} -- der TypeScript-Compiler im
+        \code{--noEmit}-Modus (nur Typ-Check, keine Ausgabe).
+\end{itemize}
+
+\begin{lstlisting}[language=bash, caption={Linter ausführen}]
+# Python
+.venv/bin/ruff check scripts/ src/ tests/
+.venv/bin/ruff format --check scripts/ src/ tests/
+
+# TypeScript
+cd tui && bun run typecheck
+\end{lstlisting}
+
+\begin{warnung}
+Beachte: Das Projekt verwendet \emph{keine} Typen-Annotationen für
+\`mypy\` -- die Typen sind in \code{pyproject.toml} unter
+\code{[tool.mypy]} deaktiviert. Dies ist eine bewusste
+Vereinfachung für ein Retail-Projekt; für ein
+\emph{Produktions}-System würde ich strikte Typen empfehlen.
+\end{warnung}
+
+\section{Was als Nächstes?}
+
+Mit Tests und Linting als Sicherheitsnetz sind wir bereit für das
+\emph{letzte und ambitionierteste} Stück: die
+AEGIS-Paper-Replikation (Kapitel~\ref{ch:analytics}). Dort
+verbinden wir alle bisherigen Komponenten -- Vendor-Adapter,
+ETL-Pipeline, Datenmodell -- zu einer kohärenten quantitativen
+Analyse.

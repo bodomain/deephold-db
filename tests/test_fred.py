@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import polars as pl
 import pytest
 
-from finance_data.vendors.fred import FredVendor, _parse_value
+from deephold_db.vendors.fred import FredVendor, _parse_value
 
 
 def test_parse_value_normal() -> None:

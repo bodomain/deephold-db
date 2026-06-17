@@ -1,4 +1,4 @@
-"""Query the finance_data DB and print a few time series.
+"""Query the deephold_db DB and print a few time series.
 
 Standalone CLI. Always produces output:
 
@@ -29,7 +29,7 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from tabulate import tabulate
 
-from finance_data.db import (
+from deephold_db.db import (
     Instrument,
     InstrumentIdentifier,
     MacroObservation,
@@ -38,8 +38,8 @@ from finance_data.db import (
     Vendor,
     session_scope,
 )
-from finance_data.utils.config import get_settings
-from finance_data.utils.logging import configure_logging, get_logger
+from deephold_db.utils.config import get_settings
+from deephold_db.utils.logging import configure_logging, get_logger
 
 log = get_logger(__name__)
 
@@ -140,7 +140,7 @@ def _seed_from_fred(api_key: str, years: int = 5) -> int:
 
     Returns the number of rows inserted. Returns 0 if healthcheck fails.
     """
-    from finance_data.vendors.fred import FredVendor
+    from deephold_db.vendors.fred import FredVendor
 
     fred = FredVendor(api_key=api_key)
     if not fred.healthcheck():
@@ -201,7 +201,7 @@ def _seed_from_ecb(years: int = 5) -> int:
 
     Returns the number of rows inserted. Returns 0 if healthcheck fails.
     """
-    from finance_data.vendors.ecb import ECB_SERIES, ECBVendor
+    from deephold_db.vendors.ecb import ECB_SERIES, ECBVendor
 
     ecb = ECBVendor()
     if not ecb.healthcheck():
@@ -268,7 +268,7 @@ def _seed_from_yahoo(years: int = 2) -> int:
     Populates ``instruments``, ``instrument_identifiers`` and ``prices_daily``.
     Returns the number of price rows inserted.
     """
-    from finance_data.vendors.yahoo import YahooVendor
+    from deephold_db.vendors.yahoo import YahooVendor
 
     targets = [
         # (yahoo_symbol, name, asset_class, currency, exchange)
@@ -449,7 +449,7 @@ def _fmt_pct(v: Any) -> str:
 def _print_summary(series_list: list[dict[str, Any]], tail: int) -> None:
     print()
     print("=" * 80)
-    print("finance_data — Time Series Query")
+    print("deephold_db — Time Series Query")
     print("=" * 80)
 
     overview = [
@@ -505,7 +505,7 @@ def _print_summary(series_list: list[dict[str, Any]], tail: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Query finance_data and print a few time series.",
+        description="Query deephold_db and print a few time series.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )

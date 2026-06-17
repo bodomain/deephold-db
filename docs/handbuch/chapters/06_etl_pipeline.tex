@@ -1,0 +1,245 @@
+% =====================================================================
+% Kapitel 6: ETL-Pipeline
+% =====================================================================
+
+\chapter{ETL-Pipeline}
+
+\label{ch:etl}
+
+Die \emph{ETL-Pipeline} -- Extract, Transform, Load -- ist das
+\emph{Rückgrat} des Projekts. Sie ist verantwortlich dafür, dass
+die Daten der Vendor-Adapter tatsächlich in die Datenbank gelangen
+und für Analysen verfügbar werden.
+
+\section{Überblick}
+
+\begin{definition}
+\textbf{ETL}
+\emph{ETL} steht für:
+  \begin{itemize}
+    \item \textbf{Extract} -- Daten aus den Quellen (FRED, ECB, Yahoo)
+          abrufen.
+    \item \textbf{Transform} -- Daten in das richtige Format und Schema
+          bringen.
+    \item \textbf{Load} -- Daten in die Datenbank schreiben.
+  \end{itemize}
+\end{definition}
+
+Abbildung~\ref{fig:etl-flow} zeigt den ETL-Flow im Detail.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.8cm and 1.2cm,
+  box/.style={rectangle, draw, thick, rounded corners, minimum width=3cm, minimum height=0.8cm, align=center, font=\small},
+  arrow/.style={-Latex, thick},
+]
+  \node[box, fill=red!20] (extract) {1. Extract\\\scriptsize Vendor-Adapter\\\scriptsize (FRED/ECB/Yahoo)};
+  \node[box, fill=yellow!20, right=of extract] (validate) {2. Validate Raw\\\scriptsize Pandera Schemas};
+  \node[box, fill=orange!20, right=of validate] (transform) {3. Transform\\\scriptsize Polars Mapping\\\scriptsize to canonical schema};
+  \node[box, fill=cyan!20, right=of transform] (validate2) {4. Validate Clean\\\scriptsize PK, OHLC, ranges};
+  \node[box, fill=green!20, below=of validate] (upsert) {5. Upsert\\\scriptsize SQLAlchemy merge()};
+  \node[box, fill=blue!20, right=of upsert] (db) {6. Persist\\\scriptsize PostgreSQL};
+
+  \draw[arrow] (extract) -- (validate);
+  \draw[arrow] (validate) -- (transform);
+  \draw[arrow] (transform) -- (validate2);
+  \draw[arrow] (validate2) -- (upsert);
+  \draw[arrow] (upsert) -- (db);
+\end{tikzpicture}
+\caption{Der ETL-Flow: Sechs Schritte, jeweils mit klarer Verantwortung.
+  Im aktuellen Projekt sind die Validate-Schritte vorbereitet, aber
+  noch nicht vollständig implementiert (geplant für eine DQ-Iteration).}
+\label{fig:etl-flow}
+\end{figure}
+
+\section{Der Seeder-Pattern}
+
+Listing~\ref{lst:seeder} zeigt das Standard-Pattern zum
+\emph{Seed} (Initial-Befüllung) einer Tabelle. Es wird für
+\code{vendors}, \code{instruments} und \code{prices\_daily}
+verwendet.
+
+\begin{lstlisting}[language=python, caption={Seeder-Pattern: lookup-or-create},label=lst:seeder]
+def upsert_instrument(asset_class, name, currency, symbol):
+    """Idempotent: creates the instrument if not in DB, else returns id."""
+    with session_scope() as s:
+        existing = (
+            s.query(Instrument)
+            .join(InstrumentIdentifier,
+                  InstrumentIdentifier.instrument_id == Instrument.instrument_id)
+            .filter(
+                InstrumentIdentifier.scheme == "YAHOO",
+                InstrumentIdentifier.value == symbol,
+            )
+            .one_or_none()
+        )
+        if existing is None:
+            inst = Instrument(asset_class=asset_class, name=name, currency=currency)
+            s.add(inst)
+            s.flush()  # gets us inst.instrument_id
+            s.add(InstrumentIdentifier(
+                instrument_id=inst.instrument_id,
+                scheme="YAHOO",
+                value=symbol,
+            ))
+            s.flush()
+            return inst.instrument_id
+        return existing.instrument_id
+\end{lstlisting}
+
+Die Schlüsseleigenschaft ist \emph{Idempotenz}: Wenn der Seeder
+zweimal läuft, werden keine Duplikate angelegt. \code{merge()} allein
+reicht dafür nicht aus -- wenn das Objekt keine \code{primary key}
+hat, versucht SQLAlchemy ein \code{INSERT} statt eines \code{UPDATE}.
+Die explizite \code{SELECT}-Suche im Voraus ist robuster.
+
+\section{Das \code{query\_db.py}-Skript}
+
+Das \code{query\_db.py}-Skript ist die zentrale CLI für Daten-Operationen.
+Es kann:
+
+\begin{itemize}
+  \item die Datenbank mit Demo-Daten füllen (falls leer),
+  \item echte Daten von FRED, ECB und Yahoo holen,
+  \item die Daten in tabellarischer Form im Terminal anzeigen.
+\end{itemize}
+
+Listing~\ref{lst:query-db} zeigt einen vereinfachten Auszug.
+
+\begin{lstlisting}[language=python, caption={Auszug aus \code{scripts/query\_db.py}},label=lst:query-db]
+def main() -> int:
+    settings = get_settings()
+    configure_logging(settings.log_level)
+
+    with session_scope() as s:
+        n_obs = s.execute(select(func.count()).select_from(MacroObservation)).scalar() or 0
+
+    if n_obs == 0 and not args.no_seed:
+        # No data: try ECB + FRED in sequence
+        if settings.fred_api_key:
+            print("seeding real FRED data...")
+            _seed_from_fred(settings.fred_api_key)
+        print("seeding real ECB data (no API key required)...")
+        _seed_from_ecb()
+        print("seeding real Yahoo Finance data (AAPL, MSFT, ^GSPC)...")
+        _seed_from_yahoo()
+
+    # Display all series with their latest values
+    series_list = _fetch_series(args.series)
+    _print_summary(series_list, tail=args.tail)
+    return 0
+\end{lstlisting}
+
+Beachten Sie das \emph{Reihenfolge}-Pattern:
+
+\begin{enumerate}
+  \item Prüfe, ob die DB bereits Daten hat (\code{n\_obs > 0}).
+  \item Falls leer: Versuche ECB (kein Key) und FRED (falls Key
+        gesetzt). Fällt auf Demo-Daten zurück, wenn beide fehlschlagen.
+  \item Lese alle Serien und zeige sie formatiert an.
+\end{enumerate}
+
+\section{Bulk-Seeding mit \code{seed\_paper\_data.py}}
+
+Für die AEGIS-Paper-Replikation (Kapitel~\ref{ch:analytics}) haben
+wir ein eigenes Skript gebaut, das 36~Symbole (31~Aktien + 5~Benchmarks)
+in einem einzigen Aufruf von \code{yfinance} lädt.
+
+\begin{lstlisting}[language=shell, caption={Bulk-Seed-Skript aufrufen}]
+# Einmaliger Aufruf
+.venv/bin/python scripts/seed_paper_data.py
+
+# Mit benutzerdefiniertem Zeitraum
+.venv/bin/python scripts/seed_paper_data.py --start 2006-01-01
+
+# Ohne Benchmarks
+.venv/bin/python scripts/seed_paper_data.py --no-benchmarks
+\end{lstlisting}
+
+Das Skript nutzt die \code{fetch\_many}-Bulk-Methode des
+Yahoo-Vendors (Listing~\ref{lst:yahoo-fetch}) -- 36~Symbole
+werden in einem einzigen \code{yf.download}-Aufruf geholt, was
+~12~Sekunden statt 36~einzelner Calls benötigt. Insgesamt
+werden 185.220~Zeilen in die \code{prices\_daily}-Tabelle
+geschrieben.
+
+\section{DQ-Checks (Vorbereitung)}
+
+Das Projekt hat Skelette für Data-Quality-Checks, die in einer
+späteren Iteration implementiert werden sollen. Die
+DQ-Tabellen (\code{dq\_runs}, \code{dq\_findings}) existieren bereits.
+
+Folgende Checks sind geplant:
+
+\begin{itemize}
+  \item \textbf{PK-Eindeutigkeit}: \code{(instrument\_id, date)}
+        darf nicht doppelt vorkommen.
+  \item \textbf{OHLC-Konsistenz}: \code{low} $\leq$ \code{open}, \code{close}
+        $\leq$ \code{high} (keine \emph{inverted candles}).
+  \item \textbf{Keine negativen Preise/Volumes}.
+  \item \textbf{Adjusted-Close-Konsistenz}: Wenn \code{corporate\_actions}
+        verfügbar ist, muss \code{adjusted\_close} das Produkt aus
+        \code{close} und allen Splits/Dividenden sein.
+  \item \textbf{Lücken-Detection}: Mehr als 5~aufeinanderfolgende
+        Handelstage ohne Eintrag -- ein \emph{DQ-Finding}.
+  \item \textbf{Ausreißer-Detection}: Tagesreturn $> 6\sigma$
+        gegenüber rollendem 252-Tage-Fenster -- \emph{flag}, nicht
+        löschen.
+  \item \textbf{Currency-Coverage}: Jedes \code{instrument} hat
+        \code{currency} gesetzt.
+  \item \textbf{Vendor-Coverage}: Jede Zeile in \code{prices\_daily}
+        hat \code{vendor\_id} gesetzt.
+\end{itemize}
+
+\section{Idempotenz}
+
+\begin{merke}
+Alle Seeder sind \emph{idempotent}. Sie können beliebig oft
+ausgeführt werden, ohne Duplikate zu erzeugen. Dies ist entscheidend
+für die Inkrementelle-Aktualisierung: ein täglicher Cron-Job ruft
+den Seeder auf, und nur neue Daten werden tatsächlich geschrieben.
+\end{merke}
+
+Listing~\ref{lst:idempotency} zeigt das zentrale Idempotenz-Pattern.
+
+\begin{lstlisting}[language=python, caption={Idempotenz-Pattern: SELECT vor INSERT},label=lst:idempotency]
+def upsert_prices(instrument_id, vendor_id, df) -> int:
+    if df.is_empty():
+        return 0
+    rows = 0
+    with session_scope() as s:
+        for r in df.iter_rows(named=True):
+            s.merge(PricesDaily(
+                instrument_id=instrument_id,
+                date=r["date"],
+                open=r.get("open"),
+                high=r.get("high"),
+                low=r.get("low"),
+                close=r["close"],
+                adjusted_close=r.get("adjusted_close"),
+                volume=r.get("volume"),
+                vendor_id=vendor_id,
+            ))
+            rows += 1
+    return rows
+\end{lstlisting}
+
+\section{Failure-Isolation}
+
+\begin{definition}
+\textbf{Failure-Isolation}
+\emph{Failure-Isolation} bedeutet, dass der Fehler eines Vendors
+\emph{nicht} den gesamten Pipeline-Lauf abbricht. Wenn Yahoo
+gerade ein Problem hat, sollen ECB und FRED trotzdem seeden.
+\end{definition}
+
+Das Skript \code{query\_db.py} setzt das um, indem jeder
+Vendor-Seeder in einem separaten \code{session\_scope} läuft. Ein
+Fehler in einem Vendor wird geloggt, der nächste Vendor läuft trotzdem.
+
+\section{Was als Nächstes?}
+
+Die ETL-Pipeline produziert Daten in \code{prices\_daily} und
+\code{macro\_observations}. Im nächsten Kapitel sehen wir, wie diese
+Daten in einem \emph{Jupyter-Notebook} visualisiert werden können.

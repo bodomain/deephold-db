@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import polars as pl
 import pytest
 
-from finance_data.vendors.ecb import ECB_SERIES, ECBVendor, _parse_ecb_csv
+from deephold_db.vendors.ecb import ECB_SERIES, ECBVendor, _parse_ecb_csv
 
 # --- Sample CSV payloads (real-ish, taken from the SDMX 2.1 endpoint) -----
 

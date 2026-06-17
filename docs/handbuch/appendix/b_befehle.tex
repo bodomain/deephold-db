@@ -1,0 +1,148 @@
+% =====================================================================
+% Anhang B: Befehlsreferenz
+% =====================================================================
+
+\chapter{Befehlsreferenz}
+
+\label{app:befehle}
+
+\section{Makefile-Targets}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Target} & \textbf{Befehl} & \textbf{Was es tut} \\
+  \midrule
+  \code{init}    & \code{make init}    & Komplett-Setup: deps + Stack + Migrations \\
+  \code{up}      & \code{make up}      & docker-compose Stack starten \\
+  \code{down}    & \code{make down}    & docker-compose Stack stoppen \\
+  \code{logs}    & \code{make logs}    & docker-compose Logs (tail) \\
+  \code{shell-db}& \code{make shell-db}& psql-Shell in die deephold-DB \\
+  \code{migrate} & \code{make migrate} & Alembic-Migrationen anwenden \\
+  \code{revision}& \code{make revision m="..."} & Neue Alembic-Revision \\
+  \code{downgrade} & \code{make downgrade} & Eine Migration zurückrollen \\
+  \code{test}    & \code{make test}    & pytest (Python) \\
+  \code{test-cov}& \code{make test-cov}& pytest mit Coverage-Report \\
+  \code{tui}     & \code{make tui}     & OpenTUI-Explorer starten \\
+  \code{tui-test}& \code{make tui-test}& Bun-Tests (TUI) \\
+  \code{tui-typecheck} & \code{make tui-typecheck} & TypeScript typecheck \\
+  \code{format}  & \code{make format}  & ruff format \\
+  \code{lint}    & \code{make lint}    & ruff check \\
+  \code{typecheck} & \code{make typecheck} & mypy \\
+  \code{check}   & \code{make check}   & Alles: lint + typecheck + test \\
+  \code{clean-pyc}& \code{make clean-pyc} & \code{\_\_pycache\_\_} entfernen \\
+  \code{clean-venv}& \code{make clean-venv} & venv neu erstellen \\
+  \bottomrule
+\end{tabular}
+\caption{Alle Makefile-Targets. Aufruf: \code{make <target>}.}
+\end{table}
+
+\section{Python-Skripte}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Skript} & \textbf{Funktion} \\
+  \midrule
+  \code{scripts/query\_db.py}             & Standalone-CLI: Daten seeden + tabellarisch anzeigen \\
+  \code{scripts/build\_notebook.py}       & Erzeugt \code{notebooks/01\_macro\_overview.ipynb} + HTML \\
+  \code{scripts/seed\_paper\_data.py}     & Bulk-Seed für 36 Ticker × 20Y via yfinance \\
+  \code{scripts/paper\_replicate.py}      & VAM-TopN-Backtest vs.\ 5 Benchmarks \\
+  \code{scripts/check-db.ts} (Bun)        & DB-Connectivity-Test für TUI \\
+  \bottomrule
+\end{tabular}
+\caption{Standalone-Skripte. Aufruf jeweils aus dem Repo-Root.}
+\end{table}
+
+\section{Umgebungsvariablen}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Variable} & \textbf{Default} & \textbf{Zweck} \\
+  \midrule
+  \code{POSTGRES\_USER}     & \code{deephold}  & Postgres-User \\
+  \code{POSTGRES\_PASSWORD} & \code{deephold}  & Postgres-Password \\
+  \code{POSTGRES\_DB}       & \code{deephold}  & Postgres-Datenbank \\
+  \code{POSTGRES\_PORT}     & \code{5432}      & Postgres-Port \\
+  \code{DATABASE\_URL}      & \code{postgresql+psycopg://\ldots}  & SQLAlchemy-URL \\
+  \code{FRED\_API\_KEY}      & (leer)          & FRED API-Key (kostenlos) \\
+  \code{ECB\_SDMX\_BASE}    & \code{https://data-api.ecb.europa.eu/service} & ECB-Basis-URL \\
+  \code{BUNDESBANK\_SDMX\_BASE} & (analog) & Bundesbank-Basis-URL \\
+  \code{PREFECT\_API\_URL}   & \code{http://localhost:4200/api} & Prefect-URL \\
+  \code{ADMINER\_PORT}      & \code{8080}      & Adminer-Web-UI \\
+  \code{PREFECT\_PORT}      & \code{4200}      & Prefect-Web-UI \\
+  \code{LOG\_LEVEL}         & \code{INFO}      & Loglevel (\code{DEBUG} für mehr Output) \\
+  \code{ENV}                & \code{dev}       & \code{dev}, \code{prod} \\
+  \code{YAHOO\_ENABLED}     & \code{true}      & Yahoo-Adapter aktivieren \\
+  \code{STOOQ\_ENABLED}     & \code{true}      & Stooq-Adapter aktivieren \\
+  \bottomrule
+\end{tabular}
+\caption{Umgebungsvariablen. In \code{.env} setzen -- niemals
+  im Quellcode.}
+\end{table}
+
+\section{Tastatur-Shortcuts (TUI)}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Taste} & \textbf{Aktion} \\
+  \midrule
+  \code{$\uparrow$} / \code{k}    & Selection nach oben \\
+  \code{$\downarrow$} / \code{j} & Selection nach unten \\
+  \code{g} / \code{Home}  & Zum Anfang \\
+  \code{G} / \code{End}   & Zum Ende \\
+  \code{r}                & Re-Query \\
+  \code{q}                & Quit \\
+  \code{Ctrl-C}           & Quit (force) \\
+  \bottomrule
+\end{tabular}
+\caption{Tastatur-Shortcuts im OpenTUI-Explorer.}
+\end{table}
+
+\section{pg-Environment (für TUI)}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Variable} & \textbf{Default} & \textbf{Zweck} \\
+  \midrule
+  \code{PGHOST}     & \code{localhost}  & Postgres-Host \\
+  \code{PGPORT}     & \code{5432}        & Postgres-Port \\
+  \code{PGUSER}     & \code{deephold}     & Postgres-User \\
+  \code{PGPASSWORD} & \code{deephold}     & Postgres-Password \\
+  \code{PGDATABASE} & \code{deephold}     & Postgres-Datenbank \\
+  \bottomrule
+\end{tabular}
+\caption{Postgres-Environment für TUI (\code{tui/src/data/db.ts}).}
+\end{table}
+
+\section{Bun-Befehle}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Befehl} & \textbf{Funktion} \\
+  \midrule
+  \code{cd tui \&\& bun install}            & Dependencies installieren \\
+  \code{cd tui \&\& bun run start}          & TUI starten \\
+  \code{cd tui \&\& bun test}               & Tests laufen lassen \\
+  \code{cd tui \&\& bun run typecheck}      & TypeScript typecheck \\
+  \code{cd tui \&\& bun run scripts/check-db.ts} & DB-Connectivity testen \\
+  \bottomrule
+\end{tabular}
+\caption{Bun-Befehle im \code{tui/}-Verzeichnis.}
+\end{table}

@@ -1,27 +1,27 @@
-name: finance-data
+name: deephold-db
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: finance_pg
+    container_name: deephold_pg
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-finance}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finance}
-      POSTGRES_DB: ${POSTGRES_DB:-finance}
+      POSTGRES_USER: ${POSTGRES_USER:-deephold}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deephold}
+      POSTGRES_DB: ${POSTGRES_DB:-deephold}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finance} -d ${POSTGRES_DB:-finance}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deephold} -d ${POSTGRES_DB:-deephold}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   adminer:
     image: adminer:4
-    container_name: finance_adminer
+    container_name: deephold_adminer
     restart: unless-stopped
     ports:
       - "${ADMINER_PORT:-8080}:8080"
@@ -33,7 +33,7 @@ services:
 
   prefect-server:
     image: prefecthq/prefect:2.16-python3.11
-    container_name: finance_prefect
+    container_name: deephold_prefect
     restart: unless-stopped
     command: prefect server start --host 0.0.0.0
     ports:

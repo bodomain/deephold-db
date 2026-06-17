@@ -1,6 +1,6 @@
 """Shared utilities (config, logging, retry, rate-limit)."""
 
-from finance_data.utils.config import (
+from deephold_db.utils.config import (
     CONFIG_DIR,
     PROJECT_ROOT,
     Settings,
@@ -9,9 +9,9 @@ from finance_data.utils.config import (
     load_tickers,
     load_vendors,
 )
-from finance_data.utils.logging import configure_logging, get_logger
-from finance_data.utils.rate_limit import limit
-from finance_data.utils.retry import RetryError, http_retry
+from deephold_db.utils.logging import configure_logging, get_logger
+from deephold_db.utils.rate_limit import limit
+from deephold_db.utils.retry import RetryError, http_retry
 
 __all__ = [
     "CONFIG_DIR",

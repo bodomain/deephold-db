@@ -21,11 +21,11 @@ from typing import Any
 import httpx
 import polars as pl
 
-from finance_data.utils.config import get_settings
-from finance_data.utils.logging import get_logger
-from finance_data.utils.rate_limit import limit
-from finance_data.utils.retry import http_retry
-from finance_data.vendors.base import Vendor
+from deephold_db.utils.config import get_settings
+from deephold_db.utils.logging import get_logger
+from deephold_db.utils.rate_limit import limit
+from deephold_db.utils.retry import http_retry
+from deephold_db.vendors.base import Vendor
 
 log = get_logger(__name__)
 
@@ -64,12 +64,75 @@ ECB_SERIES: dict[str, dict[str, str]] = {
         "frequency": "D",
         "unit": "EUR per CHF",
     },
+    "ECB:EXR:SEK.EUR.SP00.A": {
+        "flow": "EXR",
+        "key": "D.SEK.EUR.SP00.A",
+        "name": "SEK/EUR reference rate (daily)",
+        "frequency": "D",
+        "unit": "EUR per SEK",
+    },
+    "ECB:EXR:NOK.EUR.SP00.A": {
+        "flow": "EXR",
+        "key": "D.NOK.EUR.SP00.A",
+        "name": "NOK/EUR reference rate (daily)",
+        "frequency": "D",
+        "unit": "EUR per NOK",
+    },
+    "ECB:EXR:CNY.EUR.SP00.A": {
+        "flow": "EXR",
+        "key": "D.CNY.EUR.SP00.A",
+        "name": "CNY/EUR reference rate (daily)",
+        "frequency": "D",
+        "unit": "EUR per CNY",
+    },
     "ECB:ICP:U2.N.000000.4.ANR": {
         "flow": "ICP",
         "key": "M.U2.N.000000.4.ANR",
         "name": "HICP - Overall index, annual rate of change (EA, monthly)",
         "frequency": "M",
         "unit": "% y/y",
+    },
+    "ECB:ICP:DE.N.000000.4.ANR": {
+        "flow": "ICP",
+        "key": "M.DE.N.000000.4.ANR",
+        "name": "HICP - Overall index, annual rate of change (Germany, monthly)",
+        "frequency": "M",
+        "unit": "% y/y",
+    },
+    "ECB:ICP:FR.N.000000.4.ANR": {
+        "flow": "ICP",
+        "key": "M.FR.N.000000.4.ANR",
+        "name": "HICP - Overall index, annual rate of change (France, monthly)",
+        "frequency": "M",
+        "unit": "% y/y",
+    },
+    "ECB:ICP:IT.N.000000.4.ANR": {
+        "flow": "ICP",
+        "key": "M.IT.N.000000.4.ANR",
+        "name": "HICP - Overall index, annual rate of change (Italy, monthly)",
+        "frequency": "M",
+        "unit": "% y/y",
+    },
+    "ECB:ICP:ES.N.000000.4.ANR": {
+        "flow": "ICP",
+        "key": "M.ES.N.000000.4.ANR",
+        "name": "HICP - Overall index, annual rate of change (Spain, monthly)",
+        "frequency": "M",
+        "unit": "% y/y",
+    },
+    "ECB:FM:B.U2.EUR.4F.KR.MRR_FR.LEV": {
+        "flow": "FM",
+        "key": "B.U2.EUR.4F.KR.MRR_FR.LEV",
+        "name": "ECB Main Refinancing Operations Rate (MRR)",
+        "frequency": "D",
+        "unit": "%",
+    },
+    "ECB:FM:B.U2.EUR.4F.KR.DFR.LEV": {
+        "flow": "FM",
+        "key": "B.U2.EUR.4F.KR.DFR.LEV",
+        "name": "ECB Deposit Facility Rate (DFR)",
+        "frequency": "D",
+        "unit": "%",
     },
 }
 

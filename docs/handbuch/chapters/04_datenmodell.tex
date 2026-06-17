@@ -1,0 +1,405 @@
+% =====================================================================
+% Kapitel 4: Datenmodell
+% =====================================================================
+
+\chapter{Datenmodell}
+
+\label{ch:datenmodell}
+
+Das Datenmodell ist das \emph{Fundament} des gesamten Projekts.
+Es definiert, welche Daten gespeichert werden, wie sie
+zusammenhängen und wie effizient wir sie abfragen können.
+
+\section{Überblick: Die 14~Tabellen}
+
+Tabelle~\ref{tab:tables} gibt einen schnellen Überblick über alle
+14~Tabellen. Die vollständigen DDL-Definitionen finden sich in
+Anhang~C.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{llll}
+  \toprule
+  \textbf{Tabelle} & \textbf{Zweck} & \textbf{PK} & \textbf{Wichtige FKs} \\
+  \midrule
+  \code{venues}              & Börsen/Handelsplätze       & \code{venue\_id}     & -- \\
+  \code{vendors}            & Datenlieferanten           & \code{vendor\_id}    & -- \\
+  \code{instruments}        & Asset-Master               & \code{instrument\_id} & \code{primary\_venue} \\
+  \code{instrument\_identifiers} & Cross-Vendor-Mapping   & (\code{scheme}, \code{value}) & \code{instrument\_id} \\
+  \code{trading\_calendars} & Handelstage je Venue       & (\code{venue\_id}, \code{date}) & \code{venue\_id} \\
+  \code{prices\_raw}        & Roh-Preise (vendor-original) & (\code{vendor\_id}, \code{vendor\_symbol}, \code{date}) & \code{vendor\_id} \\
+  \code{prices\_daily}      & OHLCV (harmonisiert)      & (\code{instrument\_id}, \code{date}) & \code{instrument\_id}, \code{vendor\_id} \\
+  \code{corporate\_actions} & Splits, Dividenden         & (\code{instrument\_id}, \code{ex\_date}, \code{action\_type}) & \code{instrument\_id} \\
+  \code{fx\_rates\_daily}   & Cross-Currency-FX          & (\code{ccy\_from}, \code{ccy\_to}, \code{date}) & \code{vendor\_id} \\
+  \code{bond\_yields}        & Bond-Yield-Curve           & (\code{instrument\_id}, \code{date}) & \code{instrument\_id} \\
+  \code{macro\_series}      & Makro-Stammdaten           & \code{series\_id}    & -- \\
+  \code{macro\_observations}& Makro-Beobachtungen        & (\code{series\_id}, \code{date}) & \code{series\_id} \\
+  \code{dq\_runs}            & DQ-Lauf-Metadaten          & \code{run\_id}       & -- \\
+  \code{dq\_findings}        & DQ-Befunde                 & (\code{run\_id}, \code{check\_name}) & \code{run\_id} \\
+  \bottomrule
+\end{tabular}
+\caption{Alle 14~Tabellen des \code{deephold\_db}-Schemas}
+\label{tab:tables}
+\end{table}
+
+\section{ER-Diagramm}
+
+Abbildung~\ref{fig:er} zeigt das vollständige ER-Diagramm.
+
+\begin{figure}[ht]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  table/.style={
+    rectangle, draw, thick, rounded corners=2pt,
+    minimum width=4cm, align=left, inner sep=4pt, font=\scriptsize,
+  },
+  title/.style={font=\bfseries, fill=blue!20, anchor=west, inner sep=2pt},
+  col/.style={font=\ttfamily},
+  pk/.style={col, fill=yellow!20},
+  fk/.style={col, fill=green!20},
+  arrow/.style={-Latex, thick},
+]
+  % instruments
+  \node[table] (instruments) {
+    \begin{tabular}{l}
+      \node[title]{instruments}; \\
+      \node[pk]{PK instrument\_id}; \\
+      \node[col]{asset\_class (TEXT, NN)}; \\
+      \node[col]{name (TEXT, NN)}; \\
+      \node[col]{currency (CHAR(3))}; \\
+      \node[fk]{FK primary\_venue $\to$ venues}; \\
+      \node[col]{is\_active (BOOL)}; \\
+    \end{tabular}
+  };
+
+  % venues
+  \node[table, left=2.5cm of instruments] (venues) {
+    \begin{tabular}{l}
+      \node[title]{venues}; \\
+      \node[pk]{PK venue\_id}; \\
+      \node[col]{code (TEXT, UQ)}; \\
+      \node[col]{name (TEXT)}; \\
+      \node[col]{timezone (TEXT)}; \\
+      \node[col]{country (CHAR(2))}; \\
+    \end{tabular}
+  };
+
+  % vendors
+  \node[table, above=1.2cm of instruments] (vendors) {
+    \begin{tabular}{l}
+      \node[title]{vendors}; \\
+      \node[pk]{PK vendor\_id}; \\
+      \node[col]{code (TEXT, UQ)}; \\
+      \node[col]{license (TEXT)}; \\
+      \node[col]{homepage (TEXT)}; \\
+    \end{tabular}
+  };
+
+  % instrument_identifiers
+  \node[table, right=2.5cm of instruments] (identifiers) {
+    \begin{tabular}{l}
+      \node[title]{instrument\_identifiers}; \\
+      \node[pk]{PK (scheme, value)}; \\
+      \node[fk]{FK instrument\_id $\to$ instruments}; \\
+      \node[col]{scheme (TEXT, NN)}; \\
+      \node[col]{value (TEXT, NN)}; \\
+    \end{tabular}
+  };
+
+  % prices_daily
+  \node[table, below=1.2cm of instruments] (prices) {
+    \begin{tabular}{l}
+      \node[title]{prices\_daily}; \\
+      \node[pk]{PK (instrument\_id, date)}; \\
+      \node[fk]{FK instrument\_id $\to$ instruments}; \\
+      \node[fk]{FK vendor\_id $\to$ vendors}; \\
+      \node[col]{open, high, low, close, adj\_close}; \\
+      \node[col]{volume (BIGINT)}; \\
+    \end{tabular}
+  };
+
+  % prices_raw
+  \node[table, left=2.5cm of prices] (pricesraw) {
+    \begin{tabular}{l}
+      \node[title]{prices\_raw}; \\
+      \node[pk]{PK (vendor\_id, vendor\_symbol, date)}; \\
+      \node[fk]{FK vendor\_id $\to$ vendors}; \\
+      \node[col]{payload (JSONB, NN)}; \\
+    \end{tabular}
+  };
+
+  % macro_series
+  \node[table, right=2.5cm of prices] (macroseries) {
+    \begin{tabular}{l}
+      \node[title]{macro\_series}; \\
+      \node[pk]{PK series\_id (TEXT)}; \\
+      \node[col]{name, source, frequency, unit}; \\
+    \end{tabular}
+  };
+
+  % macro_observations
+  \node[table, below=1.2cm of prices] (macroobs) {
+    \begin{tabular}{l}
+      \node[title]{macro\_observations}; \\
+      \node[pk]{PK (series\_id, date)}; \\
+      \node[fk]{FK series\_id $\to$ macro\_series}; \\
+      \node[col]{value (NUMERIC(18,6))}; \\
+    \end{tabular}
+  };
+
+  % FX
+  \node[table, right=2.5cm of macroobs] (fx) {
+    \begin{tabular}{l}
+      \node[title]{fx\_rates\_daily}; \\
+      \node[pk]{PK (ccy\_from, ccy\_to, date)}; \\
+      \node[col]{rate (NUMERIC(18,8))}; \\
+      \node[fk]{FK vendor\_id $\to$ vendors}; \\
+    \end{tabular}
+  };
+
+  % corporate_actions
+  \node[table, left=2.5cm of macroobs] (corpactions) {
+    \begin{tabular}{l}
+      \node[title]{corporate\_actions}; \\
+      \node[pk]{PK (instrument\_id, ex\_date, action\_type)}; \\
+      \node[fk]{FK instrument\_id $\to$ instruments}; \\
+      \node[col]{value (NUMERIC(18,8))}; \\
+    \end{tabular}
+  };
+
+  % bond_yields
+  \node[table, right=2.5cm of macroobs] (bondyields) {
+    \begin{tabular}{l}
+      \node[title]{bond\_yields}; \\
+      \node[pk]{PK (instrument\_id, date)}; \\
+      \node[fk]{FK instrument\_id $\to$ instruments}; \\
+      \node[col]{yield, price, duration, rating}; \\
+    \end{tabular}
+  };
+
+  % dq
+  \node[table, below=1.5cm of macroobs] (dq) {
+    \begin{tabular}{l}
+      \node[title]{dq\_runs / dq\_findings}; \\
+      \node[col]{Lauf-Metadaten + Befunde}; \\
+    \end{tabular}
+  };
+
+  % Verbindungen
+  \draw[arrow] (venues) -- (instruments);
+  \draw[arrow] (vendors) -- (prices);
+  \draw[arrow] (instruments) -- (identifiers);
+  \draw[arrow] (instruments) -- (prices);
+  \draw[arrow] (instruments) -- (corpactions);
+  \draw[arrow] (instruments) -- (bondyields);
+  \draw[arrow] (macroseries) -- (macroobs);
+\end{tikzpicture}%
+}
+\caption{Entity-Relationship-Diagramm des \code{deephold\_db}-Schemas.
+  \code{instruments} ist der zentrale Asset-Master; \code{vendors} ist
+  die Quelle aller Preise. Makro- und Equity-Daten sind
+  \emph{parallel} organisiert, nicht in einer Hierarchie.}
+\label{fig:er}
+\end{figure}
+
+\section{Stammdaten-Tabellen}
+
+\subsection{\code{venues}}
+
+\emph{Börsen und Handelsplätze}. Beispiele: NASDAQ, NYSE, XETRA,
+LSE, TYO. Jede Zeile beschreibt einen Handelsplatz eindeutig über
+den Code (\code{NASDAQ}, \code{NYSE}, \code{XETRA} \ldots). Die
+\code{timezone} ermöglicht später korrekte Datums-Berechnungen über
+Zeitzonen hinweg.
+
+\subsection{\code{vendors}}
+
+\emph{Datenlieferanten} -- die Quellen, aus denen wir Preise
+beziehen. Beispiele: \code{fred}, \code{ecb}, \code{yahoo}, \code{demo}.
+Die \code{license}-Spalte speichert die Nutzungsbedingungen (z.\,B.\
+\foreign{public domain}, \foreign{CC BY 4.0}, \foreign{Yahoo ToS --
+privater Gebrauch}).
+
+\subsection{\code{instruments}}
+
+\emph{Der Asset-Master} -- eine zentrale Tabelle, in der jedes
+gehandelte Wertpapier genau einmal vorkommt: eine Aktie, ein ETF,
+ein Index, eine Anleihe. \code{asset\_class} ist ein
+\emph{Diskriminator} (\code{equity}, \code{index}, \code{bond\_gov},
+\ldots), der bestimmt, in welchen weiteren Tabellen das Instrument
+referenziert wird.
+
+\subsection{\code{instrument\_identifiers}}
+
+\emph{Das Cross-Vendor-Mapping}. Ein Instrument kann unter
+verschiedenen IDs bei verschiedenen Vendoren bekannt sein:
+
+\begin{itemize}
+  \item Yahoo Finance: \code{AAPL}
+  \item ISIN: \code{US0378331005}
+  \item Bloomberg: \code{AAPL:US}
+  \item FRED: \code{DEXUSEU} (für EUR/USD-FX)
+\end{itemize}
+
+\code{instrument\_identifiers} bildet jede dieser IDs auf die
+\emph{interne} \code{instrument\_id} ab. Der zusammengesetzte
+Primärschlüssel (\code{scheme}, \code{value}) verhindert Duplikate.
+
+\section{Preis-Tabellen}
+
+\subsection{\code{prices\_raw} -- Das unveränderte Original}
+
+\code{prices\_raw} speichert die \emph{exakten Roh-Payloads} der
+Vendoren, ohne Interpretation. Jede Zeile enthält:
+
+\begin{itemize}
+  \item \code{vendor\_id} -- welcher Lieferant
+  \item \code{vendor\_symbol} -- dessen nativers Ticker-Symbol
+  \item \code{date} -- Handelstag
+  \item \code{payload} -- die vollständige rohe Antwort als JSONB
+  \item \code{ingested\_at} -- Zeitstempel des Pulls
+\end{itemize}
+
+\begin{merke}
+\code{prices\_raw} ist der \emph{Append-Only Audit-Trail}. Wir
+schreiben hinein, ändern aber nie. Selbst wenn die harmonisierte
+Tabelle \code{prices\_daily} korrigiert werden muss, ist die
+Original-Antwort noch da.
+\end{merke}
+
+\subsection{\code{prices\_daily} -- Die harmonisierte Zeitreihe}
+
+\code{prices\_daily} ist die \emph{Arbeitstabelle} für alle
+Preis-basierten Analysen. Sie ist auf \code{instrument\_id}
+\emph{normalisiert} (nicht auf das Vendor-Symbol) -- dadurch
+können wir Daten verschiedener Vendoren für dasselbe Instrument
+zusammenführen und vergleichen.
+
+\begin{lstlisting}[language=sql, caption={Auszug aus \code{prices\_daily}}]
+\d prices_daily
+\end{lstlisting}
+
+\begin{lstlisting}[language=sql]
+                                       Table "public.prices_daily"
+       Column        |           Type           | Nullable |    Default
+--------------------+--------------------------+----------+---------------
+ instrument_id       | bigint                   | not null |
+ date                | date                     | not null |
+ open                | numeric(18,8)            |          |
+ high                | numeric(18,8)            |          |
+ low                 | numeric(18,8)            |          |
+ close               | numeric(18,8)            |          |
+ adjusted_close      | numeric(18,8)            |          |
+ volume              | bigint                   |          |
+ vendor_id           | integer                  |          |
+Indexes:
+    "prices_daily_pkey" PRIMARY KEY, btree (instrument_id, date)
+    "ix_prices_daily_date" btree (date)
+    "ix_prices_daily_instrument_id_date" btree (instrument_id, date)
+Check constraints:
+    "prices_daily_check" CHECK (instrument_id IS NOT NULL)
+Foreign-key constraints:
+    "prices_daily_instrument_id_fkey" FOREIGN KEY (instrument_id) REFERENCES instruments(instrument_id)
+    "prices_daily_vendor_id_fkey" FOREIGN KEY (vendor_id) REFERENCES vendors(vendor_id)
+\end{lstlisting}
+
+Beachten Sie die Indizes: \code{ix\_prices\_daily\_date} beschleunigt
+\emph{zeitbasierte} Queries (\code{WHERE date BETWEEN ...}), der
+zusammengesetzte Index \code{ix\_prices\_daily\_instrument\_id\_date}
+beschleunigt Queries nach \emph{einem Instrument über die Zeit}.
+
+\section{Makro-Tabellen}
+
+\subsection{\code{macro\_series} und \code{macro\_observations}}
+
+Makro-Daten (Zinssätze, Inflation, Arbeitsmarkt) werden in zwei
+\emph{getrennte} Tabellen aufgeteilt:
+
+\begin{itemize}
+  \item \code{macro\_series} -- Stammdaten: Name, Quelle, Frequenz,
+        Einheit.
+  \item \code{macro\_observations} -- die eigentlichen Werte, eine
+        Zeile pro (Serie, Datum).
+\end{itemize}
+
+Diese Aufteilung ist ein klassisches
+\emph{Star-Schema}: Die \code{series}-Tabelle ist die
+\emph{Dimension}, \code{observations} ist die \emph{Fact}-Tabelle.
+Sie ermöglicht, eine Serie nachträglich um Metadaten zu ergänzen
+(z.\,B.\ um die Datenquelle zu wechseln), ohne alle Beobachtungen
+anzufassen.
+
+\section{FX- und Bond-Tabellen}
+
+\subsection{\code{fx\_rates\_daily}}
+
+Wechselkurse -- eine Zeile pro (\code{ccy\_from}, \code{ccy\_to},
+\code{date}). Die \code{ccy\_from}/\code{ccy\_to}-Codierung
+statt einer \code{rate}-Tabelle mit zwei Zeilen pro Paar spart
+Speicher und macht Queries schneller.
+
+\subsection{\code{bond\_yields}}
+
+Bond-spezifische Daten -- die allgemeine \code{prices\_daily}-Tabelle
+enthält keine Yield-Curve-Daten. Hier werden zusätzlich
+\code{yield}, \code{price}, \code{duration} und \code{rating}
+gespeichert.
+
+\section{DQ-Tabellen}
+
+\subsection{\code{dq\_runs} und \code{dq\_findings}}
+
+\emph{Data-Quality}-Tabellen. \code{dq\_runs} protokolliert jeden
+Lauf eines DQ-Checks (z.\,B.\ \foreign{OHLC-Konsistenz} oder
+\foreign{no negative prices}), \code{dq\_findings} die einzelnen
+Befunde. Diese Tabellen sind derzeit nur \emph{Skelette} -- die
+konkreten Checks werden in einem späteren Kapitel erläutert.
+
+\section{SQLAlchemy-Definitionen}
+
+Das Schema wird in Python deklariert. Listing~\ref{lst:models}
+zeigt einen Auszug.
+
+\begin{lstlisting}[language=python, caption={Auszug aus \code{src/deephold\_db/db/models.py}}]
+class Instrument(Base):
+    __tablename__ = "instruments"
+    instrument_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    asset_class: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    currency: Mapped[str | None] = mapped_column(CHAR(3))
+    primary_venue: Mapped[int | None] = mapped_column(Integer, ForeignKey("venues.venue_id"))
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=func.true())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class PricesDaily(Base):
+    __tablename__ = "prices_daily"
+    instrument_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("instruments.instrument_id"), primary_key=True
+    )
+    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    open: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    high: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    low: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    close: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    adjusted_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    volume: Mapped[int | None] = mapped_column(BigInteger)
+    vendor_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("vendors.vendor_id"))
+    __table_args__ = (
+        Index("ix_prices_daily_date", "date"),
+        Index("ix_prices_daily_instrument_id_date", "instrument_id", "date"),
+    )
+\end{lstlisting}
+
+Listing~\ref{lst:models} zeigt die zentrale
+\emph{Declarative}-Syntax von SQLAlchemy~2.x. Die
+\code{Mapped[]}-Annotation gibt Typ + Optionalität an, der
+\code{mapped\_column()}-Aufruf definiert die
+Datenbank-Repräsentation.
+
+\section{Was als Nächstes?}
+
+Mit dem Schema im Hinterkopf wenden wir uns den \emph{Vendor-Adaptern}
+zu -- den Komponenten, die Daten aus FRED, ECB und Yahoo Finance
+in dieses Schema einfüllen. Kapitel~\ref{ch:vendor}.

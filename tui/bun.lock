@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "finance-data-tui",
+      "name": "deephold-db-tui",
       "dependencies": {
         "@opentui/core": "latest",
         "@opentui/react": "latest",

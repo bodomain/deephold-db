@@ -11,11 +11,11 @@ from typing import Any
 import httpx
 import polars as pl
 
-from finance_data.utils.config import get_settings
-from finance_data.utils.logging import get_logger
-from finance_data.utils.rate_limit import limit
-from finance_data.utils.retry import http_retry
-from finance_data.vendors.base import Vendor
+from deephold_db.utils.config import get_settings
+from deephold_db.utils.logging import get_logger
+from deephold_db.utils.rate_limit import limit
+from deephold_db.utils.retry import http_retry
+from deephold_db.vendors.base import Vendor
 
 log = get_logger(__name__)
 

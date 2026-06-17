@@ -1,7 +1,7 @@
 {
-  "name": "finance-data-tui",
+  "name": "deephold-db-tui",
   "version": "0.1.0",
-  "description": "OpenTUI-based data explorer for finance_data",
+  "description": "OpenTUI-based data explorer for deephold_db",
   "type": "module",
   "private": true,
   "scripts": {

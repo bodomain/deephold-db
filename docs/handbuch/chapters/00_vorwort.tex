@@ -1,0 +1,130 @@
+% =====================================================================
+% Kapitel 0: Vorwort
+% =====================================================================
+
+\chapter{Vorwort}
+
+\section{Wofür dieses Handbuch}
+
+Dieses Handbuch dokumentiert das Projekt \code{deephold\_db} -- eine
+Finanzmarktdatenbank für Forschung und privaten Gebrauch. Es ist nicht
+nur eine technische Referenz, sondern als \emph{Lehrbuch} geschrieben:
+Es erklärt Konzepte, rechtfertigt Designentscheidungen und führt den
+Leser Schritt für Schritt durch die Architektur.
+
+Das Handbuch richtet sich an drei Zielgruppen:
+
+\begin{itemize}
+  \item \textbf{Entwickler}, die das Projekt verstehen, erweitern oder
+        debuggen wollen. Sie brauchen einen vollständigen Überblick über
+        Architektur, Datenmodell, ETL-Pipeline, Tests und Deployment.
+  \item \textbf{Forscher}, die quantitative Finanzanalysen auf Basis
+        der gesammelten Daten durchführen wollen -- etwa Walk-Forward-Backtests
+        wie in Kapitel~\ref{ch:analytics} beschrieben.
+  \item \textbf{Studierende und Einsteiger}, die ein Gefühl dafür
+        bekommen wollen, wie ein real-existierendes Datenprodukt
+        entsteht -- vom Docker-Container bis zur Performance-Metrik.
+\end{itemize}
+
+\begin{merke}
+Dieses Handbuch setzt Programmierkenntnisse voraus -- idealerweise
+Python und Grundkonzepte relationaler Datenbanken -- aber \emph{keine}
+Finanzmarktexpertise. Alle Fachbegriffe werden bei ihrer ersten
+Verwendung in einer \textbf{Definitionsbox} (blau) erklärt.
+\end{merke}
+
+\section{Was \code{deephold\_db} nicht ist}
+
+\begin{warnung}
+Dieses Projekt ist ausdrücklich \textbf{kein} Bloomberg- oder
+Refinitiv-Ersatz. Es deckt bewusst nur Retail- und Research-Bedürfnisse ab:
+
+\begin{itemize}
+  \item \textbf{Keine} echten Point-in-Time-Daten -- die adjusted-close-Reihen
+        von Yahoo Finance sind \emph{mit aktuellem Wissensstand korrigiert}
+        (look-ahead-Bias bei echten Backtests vor 2010 möglich).
+  \item \textbf{Keine} CRSP-äquivalente Aktienverlauf-Datenbank -- kein
+        Delisting-Tracking, keine Survivorship-Bias-Korrektur.
+  \item \textbf{Keine} Intraday- oder Tick-Daten -- alles ist
+        Tagesfrequenz.
+  \item \textbf{Keine} echte Continuous-Future-Konstruktion -- Front-Month
+        Futures werden einzeln betrachtet, kein Roll-Kalender.
+  \item \textbf{Keine} Option-Chains, keine Bond-CUSIPs, keine
+        OTC-Derivate.
+\end{itemize}
+\end{warnung}
+
+Für institutionelle Anwendungen mit Echtzeitdaten, vollständiger
+PIT-Historie und Compliance-Audit-Trail ist dieses Projekt nicht
+geeignet. Es ist explizit als \emph{Selbstlern- und Forschungsplattform}
+konzipiert.
+
+\section{Wie dieses Handbuch zu lesen ist}
+
+\begin{beispiel}
+\textbf{Lese-Empfehlungen}
+  \begin{itemize}
+    \item \textbf{Entwickler} lesen das Handbuch linear von vorne nach
+          hinten. Die Kapitel bauen aufeinander auf.
+    \item \textbf{Forscher} springen direkt zu Kapitel~\ref{ch:analytics}
+          (AEGIS-Replikation) und nutzen Glossar (Anhang~A) zum
+          Nachschlagen.
+    \item \textbf{Einsteiger} beginnen mit Kapitel~\ref{ch:grundlagen}
+          (Grundbegriffe) und lesen dann selektiv die Kapitel, die sie
+          interessieren. Das Glossar hilft beim Verständnis der
+          Fachbegriffe.
+  \end{itemize}
+\end{beispiel}
+
+\section{Aufbau}
+
+Das Handbuch gliedert sich in zehn Hauptkapitel und vier Anhänge:
+
+\begin{description}
+  \item[Kapitel 1 -- Einführung] Was das Projekt tut, seine Ziele, sein
+        Scope und seine Anwendungsfälle.
+  \item[Kapitel 2 -- Grundlagen] Erklärung aller Fachbegriffe, die im
+        restlichen Handbuch vorkommen -- von PostgreSQL bis zu
+        CAGR.
+  \item[Kapitel 3 -- Infrastruktur] Docker, Docker Compose, das Makefile,
+        Python-Environment und die Bun-Runtime.
+  \item[Kapitel 4 -- Datenmodell] Das ER-Diagramm, die 14~Tabellen und
+        ihre Indizes.
+  \item[Kapitel 5 -- Vendor-Adapter] Die drei Datenlieferanten FRED, ECB
+        und Yahoo Finance.
+  \item[Kapitel 6 -- ETL-Pipeline] Seeder und das \code{query\_db.py}-Skript.
+  \item[Kapitel 7 -- Notebook-Generator] Das Plotly-Notebook und sein
+        Build-Prozess.
+  \item[Kapitel 8 -- OpenTUI-Explorer] Das Terminal-UI auf Basis von Bun
+        und React 19.
+  \item[Kapitel 9 -- Tests] pytest, \code{bun test} und die manuelle
+        Test-Checklist.
+  \item[Kapitel 10 -- Analytics \& AEGIS-Replikation] Die
+        Walk-Forward-Backtest-Implementierung und ihre Ergebnisse
+        im Vergleich zum Originalpaper.
+  \item[Anhang A -- Glossar] Alphabetisches Verzeichnis aller
+        Fachbegriffe.
+  \item[Anhang B -- Befehlsreferenz] Alle Makefile-Targets und
+        CLI-Befehle.
+  \item[Anhang C -- Datenbankschema] Vollständiges DDL aller Tabellen.
+  \item[Anhang D -- Literatur] Bibliographie der zitierten Werke.
+\end{description}
+
+\section{Danksagung}
+
+Dieses Projekt wäre ohne die folgenden Open-Source-Bibliotheken und
+Datenquellen nicht möglich:
+
+\begin{itemize}
+  \item \textbf{PostgreSQL 16} -- die Datenbank-Engine.
+  \item \textbf{SQLAlchemy 2.x} -- das ORM.
+  \item \textbf{Pandas, Polars, NumPy} -- Datenverarbeitung in Python.
+  \item \textbf{httpx, tenacity, structlog} -- robustes HTTP und Logging.
+  \item \textbf{Prefect 2.x} -- Workflow-Orchestrierung (vorbereitet).
+  \item \textbf{Plotly} -- interaktive Plots im Browser.
+  \item \textbf{Bun, React 19, OpenTUI} -- das TUI-Frontend.
+  \item \textbf{FRED, ECB, Yahoo Finance} -- die drei Datenlieferanten.
+  \item \textbf{AEGIS-Paper} -- der Anlass für die Backtest-Replikation.
+\end{itemize}
+
+Vielen Dank an alle Maintainer dieser Projekte.

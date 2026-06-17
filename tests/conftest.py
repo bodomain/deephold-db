@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from finance_data.utils.config import get_settings
+from deephold_db.utils.config import get_settings
 
 
 @pytest.fixture(autouse=True)

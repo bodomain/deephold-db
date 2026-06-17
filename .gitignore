@@ -70,3 +70,24 @@ downloads/
 # --- MyPy / Ruff ----------------------------------------------------------
 .mypy_cache/
 .ruff_cache/
+
+# --- LaTeX Build-Artifacts (nur PDF + Source einchecken) -------------------
+docs/handbuch/*.aux
+docs/handbuch/*.bcf
+docs/handbuch/*.idx
+docs/handbuch/*.ilg
+docs/handbuch/*.ind
+docs/handbuch/*.lof
+docs/handbuch/*.log
+docs/handbuch/*.lot
+docs/handbuch/*.out
+docs/handbuch/*.run.xml
+docs/handbuch/*.toc
+docs/handbuch/*.bbl
+docs/handbuch/*.blg
+docs/handbuch/*.synctex.gz
+# Alte Finance_Data-Reste (vor Rename) — nicht einchecken
+docs/handbuch/finance_data.*
+
+# --- Screenshots / temp ---------------------------------------------------
+*.png

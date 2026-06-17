@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from sqlalchemy import create_engine
 
-from finance_data.db import models  # noqa: F401
-from finance_data.db.base import Base
+from deephold_db.db import models  # noqa: F401
+from deephold_db.db.base import Base
 
 
 def test_all_tables_registered() -> None:

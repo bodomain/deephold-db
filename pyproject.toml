@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "finance-data"
+name = "deephold-db"
 version = "0.1.0"
 description = "Retail/Research financial market database"
 authors = ["Research <research@example.invalid>"]
 readme = "README.md"
 package-mode = true
-packages = [{include = "finance_data", from = "src"}]
+packages = [{include = "deephold_db", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -69,4 +69,4 @@ filterwarnings = [
 ]
 
 [tool.pandera]
-# Schemas werden in src/finance_data/dq/ definiert
+# Schemas werden in src/deephold_db/dq/ definiert

@@ -1,0 +1,370 @@
+% =====================================================================
+% Kapitel 5: Vendor-Adapter
+% =====================================================================
+
+\chapter{Vendor-Adapter}
+
+\label{ch:vendor}
+
+\emph{Vendor-Adapter} sind die Komponenten, die mit den externen
+Datenquellen sprechen. Jeder Adapter hat die gleiche Schnittstelle
+-- \code{fetch(symbol, start, end)} und \code{healthcheck()} -- aber
+unterschiedliche Implementierungen je nach API-Protokoll der
+Datenquelle.
+
+\section{Das Vendor-Interface}
+
+\begin{definition}
+\textbf{Vendor-Adapter}
+Ein \emph{Vendor-Adapter} ist eine Python-Klasse, die eine bestimmte
+externe Datenquelle (z.\,B.\ FRED) abstrahiert. Sie bietet eine
+\emph{einheitliche} Schnittstelle, damit der Rest des Systems nicht
+wissen muss, ob die Daten von einer REST-API, einer SDMX-Quelle
+oder einer CSV-Datei kommen.
+\end{definition}
+
+Listing~\ref{lst:vendor-base} zeigt die
+\emph{Abstrakte-Basisklasse}, von der alle konkreten Adapter erben.
+
+\begin{lstlisting}[language=python, caption={Basisklasse aller Vendor-Adapter},label=lst:vendor-base]
+from abc import ABC, abstractmethod
+from datetime import date
+import polars as pl
+
+class Vendor(ABC):
+    """Base class for all vendor adapters."""
+    code: str              # e.g. "fred", "ecb", "yahoo"
+    base_url: str          # Vendor's API base URL
+
+    @abstractmethod
+    def fetch(self, symbol: str, start: date, end: date) -> pl.DataFrame:
+        """Fetch raw data for `symbol` in [start, end] inclusive."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def healthcheck(self) -> bool:
+        """Return True if the vendor is reachable."""
+        raise NotImplementedError
+\end{lstlisting}
+
+Die Wahl von \code{polars.DataFrame} als Rückgabetyp ist
+bewusst: Polars ist schnell, hat Lazy-Evaluation und ist vollständig
+typisiert. Die Adapter sind dünn -- sie übersetzen JSON oder XML in
+ein DataFrame -- und die schwere Arbeit (Statistiken, Resampling,
+Joins) passiert downstream in dedizierten Analytics-Modulen
+(siehe Kapitel~\ref{ch:analytics}).
+
+\section{FRED -- Federal Reserve Economic Data}
+
+\begin{definition}
+\textbf{FRED}
+\emph{FRED} (Federal Reserve Economic Data) ist die
+Wirtschaftsdatenbank der US-Notenbank Federal Reserve. Sie enthält
+über 800.000~Zeitreihen zu Zinssätzen, Inflation, Beschäftigung,
+BIP, Geldmenge und vielem mehr. Die Daten sind \foreign{public domain}
+und über eine kostenlose REST-API zugänglich.
+\end{definition}
+
+\begin{definition}
+\textbf{API-Key}
+Ein \emph{API-Key} ist ein geheimer Token, der den
+\emph{API-Aufrufer} identifiziert. FRED verlangt einen Key, den man
+kostenlos unter \url{https://fred.stlouisfed.org/docs/api/api_key.html}
+beantragen kann. Der Key wird in der Datei \code{.env} (nie im
+Quellcode!) gespeichert.
+\end{definition}
+
+FRED liefert Zeitreihen über die Endpoints
+\code{/fred/series/observations} (für eine einzelne Zeitreihe) und
+\code{/fred/series} (für Metadaten). Listing~\ref{lst:fred-fetch}
+zeigt, wie ein typischer Fetch aussieht.
+
+\begin{lstlisting}[language=python, caption={FRED-Vendor: Healthcheck und Fetch},label=lst:fred-fetch]
+import httpx
+from deephold_db.utils.rate_limit import limit
+from deephold_db.utils.retry import http_retry
+from deephold_db.utils.config import get_settings
+
+class FredVendor(Vendor):
+    code = "fred"
+    base_url = "https://api.stlouisfed.org/fred"
+
+    def __init__(self, api_key: str | None = None) -> None:
+        self.api_key = api_key or get_settings().fred_api_key
+        if not self.api_key:
+            raise ValueError("FRED_API_KEY is required (set in .env)")
+
+    @http_retry()
+    def _get(self, path: str, params: dict) -> dict:
+        with limit(self.code, 120, 30):  # 120 req/min, burst 30
+            q = {**params, "api_key": self.api_key, "file_type": "json"}
+            r = httpx.get(f"{self.base_url}{path}", params=q, timeout=30.0)
+            r.raise_for_status()
+            return r.json()
+
+    def healthcheck(self) -> bool:
+        try:
+            data = self._get("/releases", {"limit": 1})
+            return "releases" in data
+        except Exception:
+            return False
+
+    def fetch(self, symbol: str, start, end) -> pl.DataFrame:
+        data = self._get(
+            "/series/observations",
+            {"series_id": symbol, "observation_start": start.isoformat(),
+             "observation_end": end.isoformat()},
+        )
+        rows = [{"date": obs["date"], "value": _parse_value(obs["value"])}
+                for obs in data.get("observations", [])]
+        return pl.DataFrame(rows, schema={"date": pl.Date, "value": pl.Float64})
+\end{lstlisting}
+
+Beachten Sie:
+
+\begin{itemize}
+  \item \code{@http\_retry()} -- dekoriert die Methode mit automatischen
+        Retries bei Netzwerkfehlern (3 Versuche, 5s/30s/120s Backoff).
+  \item \code{with limit(...)} -- Token-Bucket, das 120~req/min
+        erlaubt (FREDs Limit) mit Burst~30.
+  \item \code{\_parse\_value} -- FRED verwendet \code{"."} für fehlende
+        Werte; das wird zu \code{NaN} konvertiert.
+\end{itemize}
+
+\section{ECB -- European Central Bank SDMX}
+
+\begin{definition}
+\textbf{SDMX (Statistical Data and Metadata Exchange)}
+\emph{SDMX} ist ein ISO-Standard für den Austausch statistischer Daten.
+Große Institutionen wie EZB, OECD, IWF und Eurostat veröffentlichen
+ihre Daten über SDMX-Endpunkte. Das Format hat zwei Häufigkeiten:
+
+\begin{itemize}
+  \item \textbf{SDMX-ML} (XML-basiert) -- der offizielle Standard
+  \item \textbf{SDMX-JSON} (JSON-basiert) -- moderner, einfacher
+        zu parsen
+\end{itemize}
+
+Dieses Projekt verwendet die \emph{CSV}-Variante (über
+\code{format=csvdata}), weil sie sich am einfachsten in Polars laden
+lässt.
+\end{definition}
+
+\begin{beispiel}
+\textbf{ECB SDMX URL-Struktur}
+\begin{lstlisting}[language=shell]
+# EXR = Exchange Rates
+# D.USD.EUR.SP00.A = Daily, USD, EUR, Spot, Average
+https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2024-01-01&endPeriod=2024-12-31&format=csvdata
+\end{lstlisting}
+\end{beispiel}
+
+Die ECB-API ist im Gegensatz zu FRED \emph{anonym} -- kein API-Key
+nötig. Listing~\ref{lst:ecb-fetch} zeigt den ECB-Vendor.
+
+\begin{lstlisting}[language=python, caption={ECB-Vendor: Parse SDMX CSV},label=lst:ecb-fetch]
+class ECBVendor(Vendor):
+    code = "ecb"
+
+    def __init__(self, base_url: str | None = None) -> None:
+        self.base_url = (base_url or get_settings().ecb_sdmx_base).rstrip("/")
+
+    @http_retry()
+    def _get_csv(self, path: str, params: dict) -> str:
+        with limit(self.code, 60, 10):
+            q = {**params, "format": "csvdata"}
+            r = httpx.get(f"{self.base_url}{path}", params=q, timeout=30.0)
+            r.raise_for_status()
+            return r.text
+
+    def fetch(self, symbol, start, end) -> pl.DataFrame:
+        flow, key = self._resolve_symbol(symbol)
+        csv_text = self._get_csv(
+            f"/data/{flow}/{key}",
+            {"startPeriod": start.isoformat(), "endPeriod": end.isoformat()},
+        )
+        return _parse_ecb_csv(csv_text)
+\end{lstlisting}
+
+Die SDMX-Daten haben \emph{zwei verschiedene Datumsformate}:
+Tagesdaten verwenden \code{YYYY-MM-DD} (z.\,B.\ \code{2024-06-03}),
+Monatsdaten verwenden \code{YYYY-MM} (z.\,B.\ \code{2024-01}).
+Der Parser muss beide Formen handhaben.
+
+\begin{lstlisting}[language=python, caption={ECB-CSV-Parser: Beide Datumsformate}]
+def _parse_ecb_csv(csv_text: str) -> pl.DataFrame:
+    # Disables auto-type-inference (which would mis-parse "2024-01" as broken date)
+    df = pl.read_csv(
+        csv_text.encode("utf-8"),
+        columns=["TIME_PERIOD", "OBS_VALUE"],
+        dtypes={"TIME_PERIOD": pl.Utf8, "OBS_VALUE": pl.Float64},
+    )
+    if df.is_empty():
+        return pl.DataFrame(schema={"date": pl.Date, "value": pl.Float64})
+
+    # coalesce: first try full date, fall back to year-month
+    df = df.with_columns(
+        pl.coalesce(
+            pl.col("TIME_PERIOD").str.strptime(pl.Date, format="%Y-%m-%d", strict=False),
+            pl.col("TIME_PERIOD").str.strptime(pl.Date, format="%Y-%m", strict=False),
+        ).alias("date")
+    )
+    return df.select(
+        pl.col("date"),
+        pl.col("OBS_VALUE").cast(pl.Float64, strict=False).alias("value"),
+    )
+\end{lstlisting}
+
+\section{Yahoo Finance (via yfinance)}
+
+\begin{definition}
+\textbf{yfinance}
+\emph{yfinance} ist eine Python-Bibliothek, die
+\emph{inoffizielle} Yahoo-Finance-API verwendet, um historische
+Aktien-, ETF- und Index-Daten abzurufen. Es ist \emph{nicht} offiziell
+von Yahoo unterstützt -- die Bibliothek scraped und parst die
+Yahoo-Website. Daher kann sie bei Yahoo-Änderungen kaputt gehen,
+und die Yahoo \emph{terms of service} (ToS) erlauben
+\emph{keine Weiterverteilung} der Daten. Dieses Projekt
+verwendet yfinance daher nur für \emph{private} Forschungszwecke.
+\end{definition}
+
+\begin{beispiel}
+\textbf{yfinance API -- sehr einfach}
+\begin{lstlisting}[language=python]
+import yfinance as yf
+t = yf.Ticker("AAPL")
+df = t.history(start="2024-01-01", end="2024-12-31", auto_adjust=False)
+# df hat Spalten: Open, High, Low, Close, Volume, Dividends, Stock Splits
+# Index: DatetimeIndex mit TZ (z.B. America/New_York)
+\end{lstlisting}
+\end{beispiel}
+
+\begin{lstlisting}[language=python, caption={Yahoo-Vendor: Single und Bulk Fetch},label=lst:yahoo-fetch]
+import yfinance as yf
+import pandas as pd
+
+class YahooVendor(Vendor):
+    code = "yahoo"
+
+    def fetch(self, symbol, start, end) -> pl.DataFrame:
+        with limit(self.code, 30, 5):  # 30 req/min, burst 5
+            t = yf.Ticker(symbol)
+            pdf = t.history(
+                start=start.isoformat(),
+                end=(end + timedelta(days=1)).isoformat(),  # yf end is exclusive
+                auto_adjust=False,    # we need both close and adj_close
+                actions=False,         # splits/dividends go to corporate_actions
+            )
+        if pdf.empty:
+            return pl.DataFrame(schema=_YAHOO_SCHEMA)
+        return _yahoo_to_polars(pdf)
+
+    def fetch_many(self, symbols: list[str], start, end) -> dict[str, pl.DataFrame]:
+        """Bulk fetch in a single yfinance call -- much faster."""
+        with limit(self.code, 30, 5):
+            pdf = yf.download(
+                tickers=" ".join(symbols),
+                start=start.isoformat(),
+                end=(end + timedelta(days=1)).isoformat(),
+                auto_adjust=False,
+                actions=False,
+                group_by="ticker",
+                threads=True,
+                progress=False,
+            )
+        # ... handle MultiIndex columns for multiple tickers
+\end{lstlisting}
+
+Listing~\ref{lst:yahoo-fetch} zeigt den Yahoo-Vendor. Zwei
+Dinge sind erwähnenswert:
+
+\begin{enumerate}
+  \item \textbf{Bulk-Methode}: \code{fetch\_many} verwendet
+        \code{yf.download} mit \code{threads=True} -- dies holt
+        \emph{alle} Symbole in einem einzigen API-Call. Für 36~Symbole
+        benötigt es nur ~12~Sekunden, statt 36~einzelne Calls.
+  \item \textbf{Pandas-zu-Polars-Bridge}: yfinance liefert ein
+        \code{pandas.DataFrame} mit TZ-aware-DatetimeIndex und
+        nullable Integers (\code{Int64} statt \code{int64}). Wir
+        konvertieren explizit zu pl-kompatiblen Typen (\code{int64})
+        und parsen die TZ-Datums in Polars.
+\end{enumerate}
+
+\section{Rate-Limiting und Retry}
+
+\begin{definition}
+\textbf{Exponential Backoff}
+\emph{Exponential Backoff} ist eine Retry-Strategie, bei der die
+Wartezeit zwischen Versuchen \emph{exponentiell wächst}: 5s, dann
+30s, dann 120s. Dies gibt einem überlasteten Server Zeit, sich zu
+erholen, ohne dass der Client ihn weiter bombardiert.
+\end{definition}
+
+Listing~\ref{lst:retry} zeigt die zentralen Werkzeuge für robustes
+HTTP.
+
+\begin{lstlisting}[language=python, caption={Rate-Limiting und Retry-Logik},label=lst:retry]
+import httpx
+import time
+from tenacity import retry, stop_after_attempt, wait_chain, wait_fixed
+
+# Token-Bucket für Rate-Limiting
+class TokenBucket:
+    def __init__(self, rate_per_min: int, burst: int):
+        self.rate = rate_per_min / 60.0  # tokens per second
+        self.burst = burst
+        self.tokens = float(burst)
+        self.last = time.monotonic()
+
+    def take(self, n: int = 1) -> None:
+        # Wenn nicht genug Tokens: blockiere bis genug da sind
+        now = time.monotonic()
+        elapsed = now - self.last
+        self.last = now
+        self.tokens = min(self.burst, self.tokens + elapsed * self.rate)
+        if self.tokens < n:
+            time.sleep((n - self.tokens) / self.rate)
+            self.tokens = 0
+        else:
+            self.tokens -= n
+
+# Retry-Decorator mit 5s/30s/120s Backoff
+def http_retry():
+    return retry(
+        reraise=True,
+        stop=stop_after_attempt(3),
+        wait=wait_chain(wait_fixed(5), wait_fixed(30), wait_fixed(120)),
+        retry=retry_if_exception_type((
+            httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError,
+        )),
+    )
+\end{lstlisting}
+
+Jeder Vendor-Adapter verwendet \code{limit(code, rate, burst)} und
+\code{@http\_retry()}, um die spezifischen Anforderungen der Quelle
+zu erfüllen. Tabelle~\ref{tab:rate-limits} zeigt die Limits pro
+Vendor.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrl}
+  \toprule
+  \textbf{Vendor} & \textbf{Rate} & \textbf{Burst} & \textbf{Retry-Backoff} \\
+  \midrule
+  FRED   & 120 req/min & 30 & 5s/30s/120s \\
+  ECB    & 60 req/min  & 10 & 5s/30s/120s \\
+  Yahoo  & 30 req/min  & 5  & 5s/30s/120s \\
+  \bottomrule
+\end{tabular}
+\caption{Rate-Limits und Burst pro Vendor. Diese sind in
+  \code{src/deephold\_db/vendors/<name>.py} konfiguriert.}
+\label{tab:rate-limits}
+\end{table}
+
+\section{Was als Nächstes?}
+
+Die Vendor-Adapter sind die Datenquellen; die ETL-Pipeline
+(Kapitel~\ref{ch:etl}) zeigt, wie diese Daten in unsere
+Datenbank gelangen und für Analysen verfügbar gemacht werden.

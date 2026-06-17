@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from finance_data.utils.config import (
+from deephold_db.utils.config import (
     CONFIG_DIR,
     PROJECT_ROOT,
     get_settings,

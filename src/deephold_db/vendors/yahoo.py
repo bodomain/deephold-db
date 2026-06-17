@@ -17,9 +17,9 @@ import pandas as pd
 import polars as pl
 import yfinance as yf
 
-from finance_data.utils.logging import get_logger
-from finance_data.utils.rate_limit import limit
-from finance_data.vendors.base import Vendor
+from deephold_db.utils.logging import get_logger
+from deephold_db.utils.rate_limit import limit
+from deephold_db.vendors.base import Vendor
 
 log = get_logger(__name__)
 
@@ -77,6 +77,62 @@ class YahooVendor(Vendor):
             return pl.DataFrame(schema=_YAHOO_SCHEMA)
 
         return _yahoo_to_polars(pdf)
+
+    def fetch_many(
+        self,
+        symbols: list[str],
+        start: date,
+        end: date,
+    ) -> dict[str, pl.DataFrame]:
+        """Bulk-fetch daily OHLCV for many tickers in a single yfinance call.
+
+        Uses ``yf.download()`` which is much faster than per-ticker
+        requests and is rate-limit-friendly for bulk historical loads.
+
+        Returns ``{symbol: DataFrame}`` with the same schema as ``fetch``.
+        Symbols that fail or return no data are mapped to an empty
+        DataFrame with the canonical schema.
+        """
+        if not symbols:
+            return {}
+        with limit(self.code, YAHOO_RATE_PER_MIN, YAHOO_BURST):
+            try:
+                pdf = yf.download(
+                    tickers=" ".join(symbols),
+                    start=start.isoformat(),
+                    end=_end_exclusive(end),
+                    auto_adjust=False,
+                    actions=False,
+                    group_by="ticker",
+                    threads=True,
+                    progress=False,
+                )
+            except Exception as e:
+                log.error("yahoo.fetch_many_failed", error=str(e))
+                return {s: pl.DataFrame(schema=_YAHOO_SCHEMA) for s in symbols}
+
+        # yf.download returns MultiIndex columns when multiple tickers, e.g.
+        # MultiIndex([('AAPL','Open'), ('AAPL','High'), ...])
+        result: dict[str, pl.DataFrame] = {}
+        for symbol in symbols:
+            try:
+                if isinstance(pdf.columns, pd.MultiIndex):
+                    if symbol not in pdf.columns.get_level_values(0):
+                        result[symbol] = pl.DataFrame(schema=_YAHOO_SCHEMA)
+                        continue
+                    sub = pdf[symbol].copy()
+                    sub.columns.name = None
+                else:
+                    # Single-ticker fallback: columns are flat.
+                    sub = pdf.copy()
+                if sub.empty:
+                    result[symbol] = pl.DataFrame(schema=_YAHOO_SCHEMA)
+                    continue
+                result[symbol] = _yahoo_to_polars(sub)
+            except Exception as e:
+                log.warning("yahoo.fetch_many_row_failed", symbol=symbol, error=str(e))
+                result[symbol] = pl.DataFrame(schema=_YAHOO_SCHEMA)
+        return result
 
 
 def _end_exclusive(end: date) -> str:

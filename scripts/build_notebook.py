@@ -31,7 +31,7 @@ def code(text: str) -> nbf.NotebookNode:
 CELLS: list[nbf.NotebookNode] = [
     md(
         """
-        # finance_data — Macro + Equity Time Series Overview
+        # deephold_db — Macro + Equity Time Series Overview
 
         Zieht Makro-Serien aus `macro_observations` (PostgreSQL via SQLAlchemy +
         Polars) und Equity-OHLCV aus `prices_daily`, plottet mit Plotly.
@@ -49,7 +49,7 @@ CELLS: list[nbf.NotebookNode] = [
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
 
-        from finance_data.db import (
+        from deephold_db.db import (
             Instrument,
             InstrumentIdentifier,
             MacroObservation,
@@ -255,7 +255,7 @@ CELLS: list[nbf.NotebookNode] = [
         fig.update_layout(
             height=1100,
             width=1300,
-            title_text="finance_data — Macro + Equity Overview",
+            title_text="deephold_db — Macro + Equity Overview",
             template="plotly_white",
             hovermode="x unified",
             legend=dict(orientation="h", yanchor="bottom", y=-0.05, xanchor="center", x=0.5),
@@ -308,7 +308,7 @@ CELLS: list[nbf.NotebookNode] = [
         - Mehr Serien: `config/series_registry.yaml` erweitern
         - Andere Asset-Klassen: `prices_daily` (Aktien) via Yahoo-Adapter
         - Inkrementelles Update: `make ingest-all` (geplant)
-        - DQ-Checks: `src/finance_data/dq/` (Pandera-Schemas, geplant)
+        - DQ-Checks: `src/deephold_db/dq/` (Pandera-Schemas, geplant)
         """
     ),
 ]

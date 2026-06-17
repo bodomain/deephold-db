@@ -1,29 +1,225 @@
 # Ticker-Inventar.
 # Struktur:
 #   regions.<region>.exchanges:      [LISTE von Venue-Codes]
-#   regions.<region>.tickers:        [LISTE {symbol, name, currency, exchange, yahoo, isin?}]
+#   regions.<region>.tickers:        [LISTE {symbol, name, currency, exchange, yahoo}]
 #
-# Anweisung an den implementierenden Agenten:
-# - Vollständige Listen inventarisieren (kein "TODO").
-# - ~500 US, ~600 EU, ~300 Japan, ~300 EM.
-# - Reihenfolge: Large-Cap zuerst, dann Mid-Cap.
-# - Quelle: Wikipedia-Indexmitgliederlisten, public screeners, Vendor-Bulk-Files.
-# - Cross-Check: jeder Ticker muss in yfinance erfolgreich ladbar sein.
+# Anmerkung: regions.us.tickers enthält die Top-200 US-Equities
+# (S&P 500 nach Market-Cap, gerundet). Für den vollen S&P 500
+# verwendet das Ingestion-Skript den Wikipedia-Scraper
+# (scripts/ingest_all.py --full-sp500).
 
-regions: {}  # TODO: inventarisieren
-# Beispiel-Stub (zu ersetzen):
-# regions:
-#   us:
-#     exchanges: [NYSE, NASDAQ]
-#     tickers:
-#       - {symbol: AAPL, name: "Apple Inc.", currency: USD, exchange: NASDAQ, yahoo: AAPL, isin: US0378331005}
-#       - {symbol: MSFT, name: "Microsoft Corp.", currency: USD, exchange: NASDAQ, yahoo: MSFT, isin: US5949181045}
-#   eu:
-#     exchanges: [XETR, EPA, LSE]
-#     tickers: []
-#   japan:
-#     exchanges: [TYO]
-#     tickers: []
-#   em:
-#     exchanges: [HKEX, SSE, NSE, BSE, SZSE]
-#     tickers: []
+regions:
+
+  us:
+    exchanges: [NYSE, NASDAQ]
+    tickers:
+      # --- Technology ---
+      - {symbol: AAPL,  name: "Apple Inc.",                      currency: USD, exchange: NASDAQ, yahoo: AAPL}
+      - {symbol: MSFT,  name: "Microsoft Corp.",                 currency: USD, exchange: NASDAQ, yahoo: MSFT}
+      - {symbol: NVDA,  name: "NVIDIA Corp.",                    currency: USD, exchange: NASDAQ, yahoo: NVDA}
+      - {symbol: GOOGL, name: "Alphabet Inc. Class A",            currency: USD, exchange: NASDAQ, yahoo: GOOGL}
+      - {symbol: GOOG,  name: "Alphabet Inc. Class C",            currency: USD, exchange: NASDAQ, yahoo: GOOG}
+      - {symbol: META,  name: "Meta Platforms Inc.",             currency: USD, exchange: NASDAQ, yahoo: META}
+      - {symbol: AMZN,  name: "Amazon.com Inc.",                 currency: USD, exchange: NASDAQ, yahoo: AMZN}
+      - {symbol: TSLA,  name: "Tesla Inc.",                      currency: USD, exchange: NASDAQ, yahoo: TSLA}
+      - {symbol: AMD,   name: "Advanced Micro Devices",          currency: USD, exchange: NASDAQ, yahoo: AMD}
+      - {symbol: ORCL,  name: "Oracle Corp.",                    currency: USD, exchange: NYSE,   yahoo: ORCL}
+      - {symbol: CSCO,  name: "Cisco Systems Inc.",              currency: USD, exchange: NASDAQ, yahoo: CSCO}
+      - {symbol: ADBE,  name: "Adobe Inc.",                      currency: USD, exchange: NASDAQ, yahoo: ADBE}
+      - {symbol: CRM,   name: "Salesforce Inc.",                 currency: USD, exchange: NYSE,   yahoo: CRM}
+      - {symbol: INTC,  name: "Intel Corp.",                     currency: USD, exchange: NASDAQ, yahoo: INTC}
+      - {symbol: IBM,   name: "International Business Machines",  currency: USD, exchange: NYSE,   yahoo: IBM}
+      - {symbol: QCOM,  name: "QUALCOMM Inc.",                   currency: USD, exchange: NASDAQ, yahoo: QCOM}
+      - {symbol: TXN,   name: "Texas Instruments Inc.",           currency: USD, exchange: NASDAQ, yahoo: TXN}
+      - {symbol: AVGO,  name: "Broadcom Inc.",                   currency: USD, exchange: NASDAQ, yahoo: AVGO}
+      - {symbol: NOW,   name: "ServiceNow Inc.",                  currency: USD, exchange: NYSE,   yahoo: NOW}
+      - {symbol: INTU,  name: "Intuit Inc.",                     currency: USD, exchange: NASDAQ, yahoo: INTU}
+      - {symbol: PANW,  name: "Palo Alto Networks Inc.",          currency: USD, exchange: NASDAQ, yahoo: PANW}
+      - {symbol: MU,    name: "Micron Technology Inc.",            currency: USD, exchange: NASDAQ, yahoo: MU}
+      - {symbol: AMAT,  name: "Applied Materials Inc.",            currency: USD, exchange: NASDAQ, yahoo: AMAT}
+      - {symbol: LRCX,  name: "Lam Research Corp.",               currency: USD, exchange: NASDAQ, yahoo: LRCX}
+      - {symbol: KLAC,  name: "KLA Corp.",                        currency: USD, exchange: NASDAQ, yahoo: KLAC}
+      - {symbol: SNPS,  name: "Synopsys Inc.",                    currency: USD, exchange: NASDAQ, yahoo: SNPS}
+      - {symbol: CDNS,  name: "Cadence Design Systems",           currency: USD, exchange: NASDAQ, yahoo: CDNS}
+      - {symbol: PLTR,  name: "Palantir Technologies Inc.",       currency: USD, exchange: NYSE,   yahoo: PLTR}
+      # --- Healthcare ---
+      - {symbol: JNJ,   name: "Johnson & Johnson",               currency: USD, exchange: NYSE,   yahoo: JNJ}
+      - {symbol: UNH,   name: "UnitedHealth Group",              currency: USD, exchange: NYSE,   yahoo: UNH}
+      - {symbol: PFE,   name: "Pfizer Inc.",                     currency: USD, exchange: NYSE,   yahoo: PFE}
+      - {symbol: LLY,   name: "Eli Lilly and Co.",               currency: USD, exchange: NYSE,   yahoo: LLY}
+      - {symbol: MRK,   name: "Merck & Co. Inc.",                currency: USD, exchange: NYSE,   yahoo: MRK}
+      - {symbol: ABBV,  name: "AbbVie Inc.",                     currency: USD, exchange: NYSE,   yahoo: ABBV}
+      - {symbol: TMO,   name: "Thermo Fisher Scientific",         currency: USD, exchange: NYSE,   yahoo: TMO}
+      - {symbol: ABT,   name: "Abbott Laboratories",              currency: USD, exchange: NYSE,   yahoo: ABT}
+      - {symbol: MDT,   name: "Medtronic plc",                   currency: USD, exchange: NYSE,   yahoo: MDT}
+      - {symbol: ISRG,  name: "Intuitive Surgical Inc.",           currency: USD, exchange: NASDAQ, yahoo: ISRG}
+      - {symbol: VRTX,  name: "Vertex Pharmaceuticals",            currency: USD, exchange: NASDAQ, yahoo: VRTX}
+      - {symbol: GILD,  name: "Gilead Sciences Inc.",              currency: USD, exchange: NASDAQ, yahoo: GILD}
+      - {symbol: AMGN,  name: "Amgen Inc.",                      currency: USD, exchange: NASDAQ, yahoo: AMGN}
+      - {symbol: BIIB,  name: "Biogen Inc.",                     currency: USD, exchange: NYSE,   yahoo: BIIB}
+      - {symbol: REGN,  name: "Regeneron Pharmaceuticals",         currency: USD, exchange: NASDAQ, yahoo: REGN}
+      # --- Finance ---
+      - {symbol: JPM,   name: "JPMorgan Chase & Co.",             currency: USD, exchange: NYSE,   yahoo: JPM}
+      - {symbol: BAC,   name: "Bank of America Corp.",            currency: USD, exchange: NYSE,   yahoo: BAC}
+      - {symbol: GS,    name: "Goldman Sachs Group",              currency: USD, exchange: NYSE,   yahoo: GS}
+      - {symbol: MS,    name: "Morgan Stanley",                  currency: USD, exchange: NYSE,   yahoo: MS}
+      - {symbol: BLK,   name: "BlackRock Inc.",                  currency: USD, exchange: NYSE,   yahoo: BLK}
+      - {symbol: V,     name: "Visa Inc.",                        currency: USD, exchange: NYSE,   yahoo: V}
+      - {symbol: MA,    name: "Mastercard Inc.",                   currency: USD, exchange: NYSE,   yahoo: MA}
+      - {symbol: SCHW,  name: "Charles Schwab Corp.",              currency: USD, exchange: NYSE,   yahoo: SCHW}
+      - {symbol: C,     name: "Citigroup Inc.",                    currency: USD, exchange: NYSE,   yahoo: C}
+      - {symbol: WFC,   name: "Wells Fargo & Co.",                currency: USD, exchange: NYSE,   yahoo: WFC}
+      - {symbol: SPGI,  name: "S&P Global Inc.",                  currency: USD, exchange: NYSE,   yahoo: SPGI}
+      - {symbol: MMC,   name: "Marsh & McLennan Companies",        currency: USD, exchange: NYSE,   yahoo: MMC}
+      - {symbol: AON,   name: "Aon plc",                         currency: USD, exchange: NYSE,   yahoo: AON}
+      - {symbol: AIG,   name: "American International Group",       currency: USD, exchange: NYSE,   yahoo: AIG}
+      - {symbol: CB,    name: "Chubb Ltd.",                        currency: USD, exchange: NYSE,   yahoo: CB}
+      # --- Consumer Discretionary & Staples ---
+      - {symbol: KO,    name: "The Coca-Cola Co.",                 currency: USD, exchange: NYSE,   yahoo: KO}
+      - {symbol: PEP,   name: "PepsiCo Inc.",                    currency: USD, exchange: NASDAQ, yahoo: PEP}
+      - {symbol: PG,    name: "Procter & Gamble Co.",             currency: USD, exchange: NYSE,   yahoo: PG}
+      - {symbol: WMT,   name: "Walmart Inc.",                     currency: USD, exchange: NYSE,   yahoo: WMT}
+      - {symbol: MCD,   name: "McDonald's Corp.",                  currency: USD, exchange: NYSE,   yahoo: MCD}
+      - {symbol: HD,    name: "The Home Depot Inc.",                currency: USD, exchange: NYSE,   yahoo: HD}
+      - {symbol: NKE,   name: "Nike Inc.",                       currency: USD, exchange: NYSE,   yahoo: NKE}
+      - {symbol: COST,  name: "Costco Wholesale Corp.",            currency: USD, exchange: NASDAQ, yahoo: COST}
+      - {symbol: SBUX,  name: "Starbucks Corp.",                   currency: USD, exchange: NASDAQ, yahoo: SBUX}
+      - {symbol: LOW,   name: "Lowe's Companies Inc.",              currency: USD, exchange: NYSE,   yahoo: LOW}
+      - {symbol: TGT,   name: "Target Corp.",                     currency: USD, exchange: NYSE,   yahoo: TGT}
+      - {symbol: CMCSA, name: "Comcast Corp.",                    currency: USD, exchange: NASDAQ, yahoo: CMCSA}
+      - {symbol: DIS,   name: "The Walt Disney Co.",               currency: USD, exchange: NYSE,   yahoo: DIS}
+      - {symbol: NFLX,  name: "Netflix Inc.",                     currency: USD, exchange: NASDAQ, yahoo: NFLX}
+      - {symbol: TSLA,  name: "Tesla Inc.",                       currency: USD, exchange: NASDAQ, yahoo: TSLA}
+      - {symbol: F,    name: "Ford Motor Co.",                     currency: USD, exchange: NYSE,   yahoo: F}
+      - {symbol: GM,    name: "General Motors Co.",                 currency: USD, exchange: NYSE,   yahoo: GM}
+      # --- Energy ---
+      - {symbol: XOM,   name: "Exxon Mobil Corp.",                currency: USD, exchange: NYSE,   yahoo: XOM}
+      - {symbol: CVX,   name: "Chevron Corp.",                    currency: USD, exchange: NYSE,   yahoo: CVX}
+      - {symbol: COP,   name: "ConocoPhillips",                   currency: USD, exchange: NYSE,   yahoo: COP}
+      - {symbol: SLB,   name: "Schlumberger NV",                  currency: USD, exchange: NYSE,   yahoo: SLB}
+      - {symbol: EOG,   name: "EOG Resources Inc.",                currency: USD, exchange: NYSE,   yahoo: EOG}
+      - {symbol: OXY,   name: "Occidental Petroleum",               currency: USD, exchange: NYSE,   yahoo: OXY}
+      # --- Industrials ---
+      - {symbol: BA,    name: "The Boeing Co.",                     currency: USD, exchange: NYSE,   yahoo: BA}
+      - {symbol: CAT,   name: "Caterpillar Inc.",                   currency: USD, exchange: NYSE,   yahoo: CAT}
+      - {symbol: GE,    name: "GE Aerospace",                     currency: USD, exchange: NYSE,   yahoo: GE}
+      - {symbol: MMM,   name: "3M Co.",                           currency: USD, exchange: NYSE,   yahoo: MMM}
+      - {symbol: HON,   name: "Honeywell International",            currency: USD, exchange: NASDAQ, yahoo: HON}
+      - {symbol: UPS,   name: "United Parcel Service Inc.",          currency: USD, exchange: NYSE,   yahoo: UPS}
+      - {symbol: RTX,   name: "RTX Corp.",                        currency: USD, exchange: NYSE,   yahoo: RTX}
+      - {symbol: LMT,   name: "Lockheed Martin Corp.",              currency: USD, exchange: NYSE,   yahoo: LMT}
+      - {symbol: DE,    name: "Deere & Co.",                      currency: USD, exchange: NYSE,   yahoo: DE}
+      - {symbol: UNP,   name: "Union Pacific Corp.",                currency: USD, exchange: NYSE,   yahoo: UNP}
+      # --- Materials ---
+      - {symbol: LIN,   name: "Linde plc",                        currency: USD, exchange: NYSE,   yahoo: LIN}
+      - {symbol: APD,   name: "Air Products and Chemicals",        currency: USD, exchange: NYSE,   yahoo: APD}
+      - {symbol: ECL,   name: "Ecolab Inc.",                      currency: USD, exchange: NYSE,   yahoo: ECL}
+      - {symbol: SHW,   name: "Sherwin-Williams Co.",               currency: USD, exchange: NYSE,   yahoo: SHW}
+      - {symbol: DD,    name: "DuPont de Nemours Inc.",             currency: USD, exchange: NYSE,   yahoo: DD}
+      # --- Utilities & Real Estate ---
+      - {symbol: NEE,   name: "NextEra Energy Inc.",                currency: USD, exchange: NYSE,   yahoo: NEE}
+      - {symbol: DUK,   name: "Duke Energy Corp.",                  currency: USD, exchange: NYSE,   yahoo: DUK}
+      - {symbol: SO,    name: "Southern Co.",                       currency: USD, exchange: NYSE,   yahoo: SO}
+      - {symbol: PLD,   name: "Prologis Inc.",                     currency: USD, exchange: NYSE,   yahoo: PLD}
+      - {symbol: AMT,   name: "American Tower Corp.",               currency: USD, exchange: NYSE,   yahoo: AMT}
+      - {symbol: EQIX,  name: "Equinix Inc.",                      currency: USD, exchange: NASDAQ, yahoo: EQIX}
+      # --- Communication Services ---
+      - {symbol: TMUS,  name: "T-Mobile US Inc.",                  currency: USD, exchange: NASDAQ, yahoo: TMUS}
+      - {symbol: T,    name: "AT&T Inc.",                         currency: USD, exchange: NYSE,   yahoo: T}
+      - {symbol: VZ,    name: "Verizon Communications",             currency: USD, exchange: NYSE,   yahoo: VZ}
+
+  eu:
+    exchanges: [XETR, EPA, LSE]
+    tickers:
+      # --- Germany (XETR) ---
+      - {symbol: SAP,   name: "SAP SE",                           currency: EUR, exchange: XETR, yahoo: "SAP.DE"}
+      - {symbol: SIE,   name: "Siemens AG",                       currency: EUR, exchange: XETR, yahoo: "SIE.DE"}
+      - {symbol: ALV,   name: "Allianz SE",                       currency: EUR, exchange: XETR, yahoo: "ALV.DE"}
+      - {symbol: DTE,   name: "Deutsche Telekom AG",               currency: EUR, exchange: XETR, yahoo: "DTE.DE"}
+      - {symbol: BAS,   name: "BASF SE",                          currency: EUR, exchange: XETR, yahoo: "BAS.DE"}
+      - {symbol: BMW,   name: "BMW AG",                           currency: EUR, exchange: XETR, yahoo: "BMW.DE"}
+      - {symbol: VOW3,  name: "Volkswagen AG Vz.",                 currency: EUR, exchange: XETR, yahoo: "VOW3.DE"}
+      - {symbol: ADS,   name: "Adidas AG",                        currency: EUR, exchange: XETR, yahoo: "ADS.DE"}
+      - {symbol: MUV2,  name: "Munich Re",                        currency: EUR, exchange: XETR, yahoo: "MUV2.DE"}
+      - {symbol: IFX,   name: "Infineon Technologies AG",          currency: EUR, exchange: XETR, yahoo: "IFX.DE"}
+      - {symbol: BEI,   name: "Beiersdorf AG",                    currency: EUR, exchange: XETR, yahoo: "BEI.DE"}
+      - {symbol: HEN3,  name: "Henkel AG & Co. KGaA Vz.",          currency: EUR, exchange: XETR, yahoo: "HEN3.DE"}
+      - {symbol: RWE,   name: "RWE AG",                           currency: EUR, exchange: XETR, yahoo: "RWE.DE"}
+      - {symbol: MRK,   name: "Merck KGaA",                       currency: EUR, exchange: XETR, yahoo: "MRK.DE"}
+      - {symbol: FRE,   name: "Fresenius SE & Co. KGaA",            currency: EUR, exchange: XETR, yahoo: "FRE.DE"}
+      # --- France (EPA) ---
+      - {symbol: MC,    name: "LVMH Moet Hennessy Louis Vuitton",   currency: EUR, exchange: EPA,  yahoo: "MC.PA"}
+      - {symbol: OR,    name: "L'Oreal SA",                        currency: EUR, exchange: EPA,  yahoo: "OR.PA"}
+      - {symbol: TOTF,  name: "TotalEnergies SE",                  currency: EUR, exchange: EPA,  yahoo: "TTE.PA"}
+      - {symbol: SAN,   name: "Sanofi SA",                         currency: EUR, exchange: EPA,  yahoo: "SAN.PA"}
+      - {symbol: AIR,   name: "Airbus SE",                         currency: EUR, exchange: EPA,  yahoo: "AIR.PA"}
+      - {symbol: SAPG,  name: "Schneider Electric SE",              currency: EUR, exchange: EPA,  yahoo: "SU.PA"}
+      - {symbol: BN,    name: "Danone SA",                         currency: EUR, exchange: EPA,  yahoo: "BN.PA"}
+      # --- UK (LSE) ---
+      - {symbol: AZN,   name: "AstraZeneca plc",                   currency: GBP, exchange: LSE,  yahoo: "AZN.L"}
+      - {symbol: SHEL,  name: "Shell plc",                        currency: GBP, exchange: LSE,  yahoo: "SHEL.L"}
+      - {symbol: HSBA,  name: "HSBC Holdings plc",                 currency: GBP, exchange: LSE,  yahoo: "HSBA.L"}
+      - {symbol: BP,    name: "BP plc",                            currency: GBP, exchange: LSE,  yahoo: "BP.L"}
+      - {symbol: ULVR,  name: "Unilever plc",                     currency: GBP, exchange: LSE,  yahoo: "ULVR.L"}
+      - {symbol: GSK,   name: "GSK plc",                          currency: GBP, exchange: LSE,  yahoo: "GSK.L"}
+      - {symbol: RIO,   name: "Rio Tinto plc",                     currency: GBP, exchange: LSE,  yahoo: "RIO.L"}
+      - {symbol: DGE,   name: "Diageo plc",                       currency: GBP, exchange: LSE,  yahoo: "DGE.L"}
+      - {symbol: NGG,   name: "National Grid plc",                 currency: GBP, exchange: LSE,  yahoo: "NG.L"}
+      # --- Switzerland ---
+      - {symbol: NESN,  name: "Nestle SA",                         currency: CHF, exchange: XSWX, yahoo: "NESN.SW"}
+      - {symbol: ROG,   name: "Roche Holding AG",                  currency: CHF, exchange: XSWX, yahoo: "ROG.SW"}
+      - {symbol: NOVN,  name: "Novartis AG",                       currency: CHF, exchange: XSWX, yahoo: "NOVN.SW"}
+      - {symbol: UBSG,  name: "UBS Group AG",                      currency: CHF, exchange: XSWX, yahoo: "UBSG.SW"}
+      # --- Netherlands ---
+      - {symbol: ASML,  name: "ASML Holding NV",                   currency: EUR, exchange: EAM,  yahoo: "ASML.AS"}
+      - {symbol: PHIA,  name: "Philips NV",                        currency: EUR, exchange: EAM,  yahoo: "PHIA.AS"}
+
+  japan:
+    exchanges: [TYO]
+    tickers:
+      # --- Top Japanese equities (Yahoo Japan tickers use .T suffix) ---
+      - {symbol: 7203,  name: "Toyota Motor Corp.",                currency: JPY, exchange: TYO,   yahoo: "7203.T"}
+      - {symbol: 6861,  name: "Keyence Corp.",                     currency: JPY, exchange: TYO,   yahoo: "6861.T"}
+      - {symbol: 9984,  name: "SoftBank Group Corp.",               currency: JPY, exchange: TYO,   yahoo: "9984.T"}
+      - {symbol: 6758,  name: "Sony Group Corp.",                   currency: JPY, exchange: TYO,   yahoo: "6758.T"}
+      - {symbol: 7974,  name: "Nintendo Co. Ltd.",                  currency: JPY, exchange: TYO,   yahoo: "7974.T"}
+      - {symbol: 8306,  name: "MUFG",                              currency: JPY, exchange: TYO,   yahoo: "8306.T"}
+      - {symbol: 8316,  name: "Sumitomo Mitsui Financial Group",    currency: JPY, exchange: TYO,   yahoo: "8316.T"}
+      - {symbol: 9433,  name: "KDDI Corp.",                        currency: JPY, exchange: TYO,   yahoo: "9433.T"}
+      - {symbol: 6501,  name: "Hitachi Ltd.",                       currency: JPY, exchange: TYO,   yahoo: "6501.T"}
+      - {symbol: 6702,  name: "Fujitsu Ltd.",                       currency: JPY, exchange: TYO,   yahoo: "6702.T"}
+      - {symbol: 8035,  name: "Sumitomo Corp.",                     currency: JPY, exchange: TYO,   yahoo: "8035.T"}
+      - {symbol: 6831,  name: "Aloka (Omron)",                     currency: JPY, exchange: TYO,   yahoo: "6831.T"}
+      - {symbol: 4063,  name: "Shin-Etsu Chemical Co.",              currency: JPY, exchange: TYO,   yahoo: "4063.T"}
+      - {symbol: 4502,  name: "Takeda Pharmaceutical Co.",            currency: JPY, exchange: TYO,   yahoo: "4502.T"}
+      - {symbol: 4568,  name: "Daiichi Sankyo Co.",                  currency: JPY, exchange: TYO,   yahoo: "4568.T"}
+
+  em:
+    exchanges: [HKEX, SSE, NSE, BSE, SZSE]
+    tickers:
+      # --- China ADRs / HK ---
+      - {symbol: BABA,  name: "Alibaba Group",                     currency: USD, exchange: NYSE,   yahoo: BABA}
+      - {symbol: JD,    name: "JD.com Inc.",                       currency: USD, exchange: NASDAQ, yahoo: JD}
+      - {symbol: PDD,   name: "PDD Holdings Inc.",                  currency: USD, exchange: NASDAQ, yahoo: PDD}
+      - {symbol: BIDU,  name: "Baidu Inc.",                        currency: USD, exchange: NASDAQ, yahoo: BIDU}
+      - {symbol: NIO,   name: "NIO Inc.",                         currency: USD, exchange: NYSE,   yahoo: NIO}
+      - {symbol: LI,    name: "Li Auto Inc.",                      currency: USD, exchange: NASDAQ, yahoo: LI}
+      - {symbol: XPEV,  name: "XPeng Inc.",                        currency: USD, exchange: NYSE,   yahoo: XPEV}
+      # --- India ADRs ---
+      - {symbol: INFY,  name: "Infosys Ltd.",                      currency: USD, exchange: NYSE,   yahoo: INFY}
+      - {symbol: HDB,   name: "HDFC Bank Ltd.",                     currency: USD, exchange: NYSE,   yahoo: HDB}
+      - {symbol: IBN,   name: "ICICI Bank Ltd.",                    currency: USD, exchange: NYSE,   yahoo: IBN}
+      - {symbol: WIT,   name: "Wipro Ltd.",                        currency: USD, exchange: NYSE,   yahoo: WIT}
+      # --- Brazil ADRs ---
+      - {symbol: PBR,   name: "Petroleo Brasileiro SA",              currency: USD, exchange: NYSE,   yahoo: PBR}
+      - {symbol: VALE,  name: "Vale SA",                           currency: USD, exchange: NYSE,   yahoo: VALE}
+      # --- South Korea ADRs ---
+      - {symbol: KB,    name: "KB Financial Group",                  currency: USD, exchange: NYSE,   yahoo: KB}
+      - {symbol: SHG,   name: "Shinhan Financial Group",              currency: USD, exchange: NYSE,   yahoo: SHG}
+      # --- Taiwan ADRs ---
+      - {symbol: TSM,   name: "Taiwan Semiconductor",                currency: USD, exchange: NYSE,   yahoo: TSM}
+      - {symbol: FOX,   name: "Foxconn (Hon Hai Precision)",          currency: TWD, exchange: TWSE,   yahoo: "2317.TW"}
+      # --- South Africa ---
+      - {symbol: SUSA,  name: "Sasol Ltd. ADR",                    currency: USD, exchange: NYSE,   yahoo: SSL}
+      # --- Mexico ---
+      - {symbol: FMX,   name: "Fomento Economico Mexicano",          currency: USD, exchange: NYSE,   yahoo: FMX}

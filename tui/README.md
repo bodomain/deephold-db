@@ -1,6 +1,6 @@
-# finance-data-tui
+# deephold-db-tui
 
-OpenTUI-basierter Daten-Explorer für die `finance_data`-PostgreSQL-DB.
+OpenTUI-basierter Daten-Explorer für die `deephold_db`-PostgreSQL-DB.
 
 Schnelles, interaktives TUI-Frontend (kein Jupyter nötig) zum Browsen
 der Macro- und Equity-Serien.
@@ -39,7 +39,7 @@ Dann navigierst du mit `↑/↓` durch die 12 Serien, siehst rechts die letzten
 ## Was du im TUI siehst
 
 ```
-┌─ finance_data — TUI Explorer    12 series ─────────────────┐
+┌─ deephold_db — TUI Explorer    12 series ─────────────────┐
 ├─Series (12)──────────┬─AAPL — Apple Inc.────────────────────┤
 │ ▸ E AAPL      yahoo  │  rows  499   first 2024-06-17        │
 │   E MSFT      yahoo  │  last  2026-06-12   unit USD         │
@@ -155,9 +155,9 @@ Alle read-only, gegen die `finance`-DB:
 |---|---|---|
 | `PGHOST` | `localhost` | Postgres host |
 | `PGPORT` | `5432` | Postgres port |
-| `PGUSER` | `finance` | Postgres user |
-| `PGPASSWORD` | `finance` | Postgres password |
-| `PGDATABASE` | `finance` | Database name |
+| `PGUSER` | `deephold` | Postgres user |
+| `PGPASSWORD` | `deephold` | Postgres password |
+| `PGDATABASE` | `deephold` | Database name |
 
 Die Defaults entsprechen dem Python-Stack (`docker-compose.yml`).
 
@@ -187,7 +187,7 @@ Vor dem Deploy oder nach Code-Änderungen die Checkliste durchgehen:
 
 | # | Schritt | Erwartung |
 |---|---|---|
-| 1 | `make tui` starten | TUI öffnet, Header "finance_data — TUI Explorer" sichtbar |
+| 1 | `make tui` starten | TUI öffnet, Header "deephold_db — TUI Explorer" sichtbar |
 | 2 | Initial-Load | "12 series" in der Header-Zeile, nicht "loading..." |
 | 3 | Erste Zeile selektiert | AAPL (▸) ist markiert, Detail zeigt Apple-Daten |
 | 4 | `↓` 4x drücken | Selection wandert zu MSFT → ^GSPC → GBP/EUR → JPY/EUR |
